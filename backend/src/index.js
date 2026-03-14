@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const rateLimit = require('express-rate-limit');
 
 const weatherRouter = require('./routes/weather');
 const worklogRouter = require('./routes/worklog');
@@ -13,6 +14,10 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
+
+// Rate limit all API routes
+const apiLimiter = rateLimit({ windowMs: 60 * 1000, limit: 200 });
+app.use('/api/', apiLimiter);
 
 // Serve static React build
 app.use(express.static(path.join(__dirname, '../public')));
