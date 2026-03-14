@@ -1,3 +1,9 @@
+## [1.1.0](https://github.com/tkhom3/docker-lawncare/compare/v1.0.13...v1.1.0) (2026-03-14)
+
+### ✨ Features
+
+* consolidate db schema ([607875f](https://github.com/tkhom3/docker-lawncare/commit/607875f4dd611b396728051bac1ef88a32ecf642))
+
 ## [1.0.13](https://github.com/tkhom3/docker-lawncare/compare/v1.0.12...v1.0.13) (2026-03-14)
 
 ### 🐛 Bug Fixes
