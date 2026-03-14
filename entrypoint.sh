@@ -13,4 +13,4 @@ fi
 # Fix ownership of the data directory
 chown -R lawncare:lawncare /app/data
 
-exec su-exec lawncare node src/index.js
+exec gosu lawncare node src/index.js

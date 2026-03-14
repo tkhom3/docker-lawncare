@@ -2,7 +2,7 @@ FROM python:3.14-slim
 ENV PYTHONUNBUFFERED=1
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends su-exec \
+RUN apt-get update && apt-get install -y --no-install-recommends gosu \
     && rm -rf /var/lib/apt/lists/*
 COPY collector/pyproject.toml ./
 RUN uv pip install --system .
