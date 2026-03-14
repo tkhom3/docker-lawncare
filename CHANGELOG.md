@@ -1,3 +1,9 @@
+## [1.2.0](https://github.com/tkhom3/docker-lawncare/compare/v1.1.1...v1.2.0) (2026-03-14)
+
+### ✨ Features
+
+* add soil sampling ([f4b047c](https://github.com/tkhom3/docker-lawncare/commit/f4b047c4ed53974205c58db33b537cac27e6653d))
+
 ## [1.1.1](https://github.com/tkhom3/docker-lawncare/compare/v1.1.0...v1.1.1) (2026-03-14)
 
 ### 🐛 Bug Fixes
