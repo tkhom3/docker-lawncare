@@ -1,3 +1,9 @@
+## [1.2.1](https://github.com/tkhom3/docker-lawncare/compare/v1.2.0...v1.2.1) (2026-03-14)
+
+### 🐛 Bug Fixes
+
+* move to a single package-lock file ([f5a2a80](https://github.com/tkhom3/docker-lawncare/commit/f5a2a804c366e3af5f9b081cb6ead7307faeaa06))
+
 ## [1.2.0](https://github.com/tkhom3/docker-lawncare/compare/v1.1.1...v1.2.0) (2026-03-14)
 
 ### ✨ Features
