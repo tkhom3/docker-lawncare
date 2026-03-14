@@ -1,3 +1,13 @@
+## [1.0.7](https://github.com/tkhom3/docker-lawncare/compare/v1.0.6...v1.0.7) (2026-03-14)
+
+### 🐛 Bug Fixes
+
+* formatting issue on predictions page ([23bdd0b](https://github.com/tkhom3/docker-lawncare/commit/23bdd0bb8cd7fcf5caf5484d8797d1a525701cdc))
+
+### 🔧 Chores
+
+* add dependabot and update workflow versions ([3fb1c9c](https://github.com/tkhom3/docker-lawncare/commit/3fb1c9c3c6e71542622d2258712927c68740e6ad))
+
 ## [1.0.6](https://github.com/tkhom3/docker-lawncare/compare/v1.0.5...v1.0.6) (2026-03-14)
 
 ### 🐛 Bug Fixes
