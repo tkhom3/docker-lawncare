@@ -90,13 +90,6 @@
       }
     ],
     [
-      "@semantic-release/npm",
-      {
-        "npmPublish": false,
-        "tarballDir": "dist"
-      }
-    ],
-    [
       "@semantic-release/git",
       {
         "assets": ["package.json", "backend/package.json", "frontend/package.json", "CHANGELOG.md"],
