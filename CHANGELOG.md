@@ -1,3 +1,9 @@
+## [1.0.1](https://github.com/tkhom3/docker-lawncare/compare/v1.0.0...v1.0.1) (2026-03-14)
+
+### 🐛 Bug Fixes
+
+* use official semantic-release-action for reliable release detection ([43bf56b](https://github.com/tkhom3/docker-lawncare/commit/43bf56bed4d7c7033ee2431f791067466703c287))
+
 ## 1.0.0 (2026-03-14)
 
 ### ✨ Features
