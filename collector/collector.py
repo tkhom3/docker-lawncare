@@ -38,7 +38,8 @@ def get_settings():
             s.get('lat', '').strip() or _ENV_LAT,
             s.get('long', '').strip() or _ENV_LONG,
         )
-    except Exception:
+    except Exception as e:
+        logger.error(f'Failed to read settings from DB, falling back to env vars: {e}')
         return _ENV_API_KEY, _ENV_LAT, _ENV_LONG
 
 
@@ -117,9 +118,11 @@ def backfill_history(days=30):
     )
 
     try:
-        logger.info(f'Backfilling history from {start} to {end}...')
+        logger.info(f'Backfilling history from {start} to {end} for {LAT},{LONG}...')
         resp = requests.get(url, timeout=60)
-        resp.raise_for_status()
+        if not resp.ok:
+            logger.error(f'Backfill HTTP {resp.status_code}: {resp.text[:200]}')
+            resp.raise_for_status()
         data = resp.json()
 
         values = data.get('location', {}).get('values', [])
@@ -184,9 +187,11 @@ def fetch_history():
     )
 
     try:
-        logger.info(f'Fetching history for {yesterday}...')
+        logger.info(f'Fetching history for {yesterday} ({LAT},{LONG})...')
         resp = requests.get(url, timeout=30)
-        resp.raise_for_status()
+        if not resp.ok:
+            logger.error(f'History HTTP {resp.status_code}: {resp.text[:200]}')
+            resp.raise_for_status()
         data = resp.json()
 
         values = data.get('location', {}).get('values', [])
@@ -203,7 +208,7 @@ def fetch_history():
 
         conn = get_db()
         try:
-            conn.execute(
+            cursor = conn.execute(
                 """
                 INSERT OR IGNORE INTO weather_history
                     (date, temp_avg, temp_high, temp_low, humidity, precip, source)
@@ -212,10 +217,13 @@ def fetch_history():
                 (yesterday, temp_avg, temp_high, temp_low, humidity, precip),
             )
             conn.commit()
-            logger.info(
-                f'History inserted: {yesterday} | avg={temp_avg} high={temp_high} low={temp_low} '
-                f'humidity={humidity} precip={precip}'
-            )
+            if cursor.rowcount:
+                logger.info(
+                    f'History saved: {yesterday} | avg={temp_avg}°C high={temp_high}°C '
+                    f'low={temp_low}°C humidity={humidity}% precip={precip}mm'
+                )
+            else:
+                logger.info(f'History already exists for {yesterday}, skipped.')
         finally:
             conn.close()
 
