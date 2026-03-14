@@ -1,3 +1,10 @@
+## [1.0.13](https://github.com/tkhom3/docker-lawncare/compare/v1.0.12...v1.0.13) (2026-03-14)
+
+### 🐛 Bug Fixes
+
+* build error ([9307cd1](https://github.com/tkhom3/docker-lawncare/commit/9307cd1f1af9eecc13d39461c5f2365ae317eff2))
+* update work settings ([5ac4133](https://github.com/tkhom3/docker-lawncare/commit/5ac413363045f69f4ce342ab80ce44f98467eaa4))
+
 ## [1.0.12](https://github.com/tkhom3/docker-lawncare/compare/v1.0.11...v1.0.12) (2026-03-14)
 
 ### 🐛 Bug Fixes
