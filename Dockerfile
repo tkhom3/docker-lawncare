@@ -7,7 +7,8 @@ COPY backend/package.json ./backend/
 COPY frontend/package.json ./frontend/
 RUN npm ci --workspace=frontend
 COPY frontend/ ./frontend/
-RUN npm run build --workspace=frontend
+WORKDIR /app/frontend
+RUN npm run build
 
 # Stage 2: Build the Node/Express backend
 FROM node:22-bookworm-slim AS backend-build

@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build outputs
+dist/
+frontend/dist/
+
+# Python
+collector/.venv/
+**/__pycache__/
+**/*.pyc
+
+# Data volume
+data/
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/
+*.log
+
+# Environment
+.env
+.env.local
+
+# Git
+.git/
+.gitignore
+
+# CI/CD
+.github/
+
+# Dev tools
+.claude/
