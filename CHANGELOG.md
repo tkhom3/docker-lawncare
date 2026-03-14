@@ -1,3 +1,9 @@
+## [1.0.4](https://github.com/tkhom3/docker-lawncare/compare/v1.0.3...v1.0.4) (2026-03-14)
+
+### 🐛 Bug Fixes
+
+* proper packages ([8af7ce1](https://github.com/tkhom3/docker-lawncare/commit/8af7ce1c3ab1d65a65e4ba071ef97a0ac871b3fd))
+
 ## [1.0.3](https://github.com/tkhom3/docker-lawncare/compare/v1.0.2...v1.0.3) (2026-03-14)
 
 ### 🐛 Bug Fixes
