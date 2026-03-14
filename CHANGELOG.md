@@ -1,3 +1,9 @@
+## [1.0.5](https://github.com/tkhom3/docker-lawncare/compare/v1.0.4...v1.0.5) (2026-03-14)
+
+### 🐛 Bug Fixes
+
+* properly store api key ([1b354d8](https://github.com/tkhom3/docker-lawncare/commit/1b354d885886f85a629220fdc9b0144f58ad2b2e))
+
 ## [1.0.4](https://github.com/tkhom3/docker-lawncare/compare/v1.0.3...v1.0.4) (2026-03-14)
 
 ### 🐛 Bug Fixes
