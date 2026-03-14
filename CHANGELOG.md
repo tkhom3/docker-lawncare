@@ -1,3 +1,14 @@
+## [1.2.4](https://github.com/tkhom3/docker-lawncare/compare/v1.2.3...v1.2.4) (2026-03-14)
+
+### 🐛 Bug Fixes
+
+* remove macOS package-lock.json to fix Linux docker build ([e8b8a25](https://github.com/tkhom3/docker-lawncare/commit/e8b8a258dce297c6776e1e00c6e0537410756e0a))
+* use npm install instead of npm ci to work without package-lock.json ([3bc830d](https://github.com/tkhom3/docker-lawncare/commit/3bc830d1233338b2356fae2a7d2b486e2c4d7e33))
+
+### 🔧 Chores
+
+* add package-lock.json to .gitignore to prevent platform-specific dependencies ([14e8c53](https://github.com/tkhom3/docker-lawncare/commit/14e8c53bf3a37a0b1da8a5f9b87b3c15a20b00f2))
+
 ## [1.2.3](https://github.com/tkhom3/docker-lawncare/compare/v1.2.2...v1.2.3) (2026-03-14)
 
 ### 🐛 Bug Fixes
