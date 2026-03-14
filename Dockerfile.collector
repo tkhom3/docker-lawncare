@@ -1,0 +1,12 @@
+FROM python:3.14-slim
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
+WORKDIR /app
+COPY collector/pyproject.toml ./
+RUN uv pip install --system .
+COPY collector/collector.py ./
+
+# Create non-root user
+RUN useradd -m -u 10001 lawncare && chown -R lawncare:lawncare /app
+USER lawncare
+
+CMD ["python", "collector.py"]

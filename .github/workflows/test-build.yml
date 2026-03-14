@@ -1,0 +1,33 @@
+name: Test Docker Build (Pull Requests)
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Test build app image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Test build collector image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.collector
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
