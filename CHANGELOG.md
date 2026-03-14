@@ -1,3 +1,9 @@
+## [1.2.2](https://github.com/tkhom3/docker-lawncare/compare/v1.2.1...v1.2.2) (2026-03-14)
+
+### 🐛 Bug Fixes
+
+* update dockerfile to pass builds ([20986e2](https://github.com/tkhom3/docker-lawncare/commit/20986e21bd2f307703c4fb91b25949724cd016f0))
+
 ## [1.2.1](https://github.com/tkhom3/docker-lawncare/compare/v1.2.0...v1.2.1) (2026-03-14)
 
 ### 🐛 Bug Fixes
