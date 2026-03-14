@@ -1,3 +1,9 @@
+## [1.0.12](https://github.com/tkhom3/docker-lawncare/compare/v1.0.11...v1.0.12) (2026-03-14)
+
+### 🐛 Bug Fixes
+
+* move to a single container ([198eb2a](https://github.com/tkhom3/docker-lawncare/commit/198eb2a80d0c6d585fa0bfb78cdf974e95f63828))
+
 ## [1.0.11](https://github.com/tkhom3/docker-lawncare/compare/v1.0.10...v1.0.11) (2026-03-14)
 
 ### ♻️ Refactoring
