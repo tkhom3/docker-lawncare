@@ -1,3 +1,9 @@
+## [1.1.1](https://github.com/tkhom3/docker-lawncare/compare/v1.1.0...v1.1.1) (2026-03-14)
+
+### 🐛 Bug Fixes
+
+* Bug in nitrogent recommendation ([c8e442a](https://github.com/tkhom3/docker-lawncare/commit/c8e442aaafcb65268273414325d7fc6561900533))
+
 ## [1.1.0](https://github.com/tkhom3/docker-lawncare/compare/v1.0.13...v1.1.0) (2026-03-14)
 
 ### ✨ Features
