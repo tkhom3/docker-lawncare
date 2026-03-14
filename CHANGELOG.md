@@ -1,3 +1,9 @@
+## [1.2.6](https://github.com/tkhom3/docker-lawncare/compare/v1.2.5...v1.2.6) (2026-03-14)
+
+### 🐛 Bug Fixes
+
+* update workflows ([eb142c2](https://github.com/tkhom3/docker-lawncare/commit/eb142c25c5b4928d6e093a95192e11611ee09e16))
+
 ## [1.2.5](https://github.com/tkhom3/docker-lawncare/compare/v1.2.4...v1.2.5) (2026-03-14)
 
 ### 🐛 Bug Fixes
