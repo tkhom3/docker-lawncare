@@ -27,15 +27,17 @@ jobs:
         with:
           node-version: "18"
 
+      - name: Install semantic-release
+        run: npm install -g semantic-release @semantic-release/changelog @semantic-release/git @semantic-release/github @semantic-release/commit-analyzer @semantic-release/release-notes-generator
+
       - name: Semantic Release
         id: semantic
-        uses: cycjimmy/semantic-release-action@v4
-        with:
-          semantic_version: 23
-          branches: |
-            [
-              'main'
-            ]
+        run: |
+          semantic-release --branches main 2>&1 | tee release.log
+          PUBLISHED=$(grep -q "published release" release.log && echo "true" || echo "false")
+          VERSION=$(grep "published release" release.log | grep -oP 'v\K[\d\.]+' || echo "")
+          echo "new_release_published=$PUBLISHED" >> $GITHUB_OUTPUT
+          echo "new_release_version=$VERSION" >> $GITHUB_OUTPUT
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
