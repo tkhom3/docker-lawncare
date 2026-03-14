@@ -72,3 +72,5 @@ jobs:
             ${{ github.repository }}:latest
             ${{ github.repository }}:v${{ needs.release.outputs.version }}
             ${{ github.repository }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
