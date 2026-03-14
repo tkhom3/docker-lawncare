@@ -1,0 +1,10 @@
+{
+  "name": "lawncare",
+  "version": "0.0.0-semantically-released",
+  "description": "Web dashboard for tracking lawn health and maintenance activities",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ]
+}
