@@ -2,10 +2,10 @@
 FROM node:22-bookworm-slim AS frontend-build
 RUN apt-get update && apt-get upgrade -y --no-install-recommends && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-COPY package.json package-lock.json ./
+COPY package.json ./
 COPY backend/package.json ./backend/
 COPY frontend/package.json ./frontend/
-RUN npm ci --workspace=frontend
+RUN npm install --workspace=frontend
 COPY frontend/ ./frontend/
 WORKDIR /app/frontend
 RUN npm run build
@@ -13,10 +13,10 @@ RUN npm run build
 # Stage 2: Build the Node/Express backend
 FROM node:22-bookworm-slim AS backend-build
 WORKDIR /app
-COPY package.json package-lock.json ./
+COPY package.json ./
 COPY backend/package.json ./backend/
 COPY frontend/package.json ./frontend/
-RUN npm ci --workspace=backend
+RUN npm install --workspace=backend
 COPY backend/src ./src
 COPY --from=frontend-build /app/frontend/dist ./public
 
