@@ -1,17 +1,21 @@
 # Stage 1: Build the React frontend
 FROM node:22-bookworm-slim AS frontend-build
 RUN apt-get update && apt-get upgrade -y --no-install-recommends && rm -rf /var/lib/apt/lists/*
-WORKDIR /app/frontend
-COPY frontend/package*.json ./
-RUN npm ci
-COPY frontend/ ./
-RUN npm run build
+WORKDIR /app
+COPY package.json package-lock.json ./
+COPY backend/package.json ./backend/
+COPY frontend/package.json ./frontend/
+RUN npm ci --workspace=frontend
+COPY frontend/ ./frontend/
+RUN npm run build --workspace=frontend
 
 # Stage 2: Build the Node/Express backend
 FROM node:22-bookworm-slim AS backend-build
 WORKDIR /app
-COPY backend/package*.json ./
-RUN npm ci
+COPY package.json package-lock.json ./
+COPY backend/package.json ./backend/
+COPY frontend/package.json ./frontend/
+RUN npm ci --workspace=backend
 COPY backend/src ./src
 COPY --from=frontend-build /app/frontend/dist ./public
 
