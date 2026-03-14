@@ -13,4 +13,4 @@ fi
 # Fix ownership of the data directory
 chown -R lawncare:lawncare /app/data
 
-exec gosu lawncare node src/index.js
+exec supervisord -c /etc/supervisor/conf.d/supervisord.conf

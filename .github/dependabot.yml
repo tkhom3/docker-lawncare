@@ -17,7 +17,7 @@ updates:
       prefix: "fix"
 
   # Python collector dependencies — fix prefix, triggers patch release
-  - package-ecosystem: "pip"
+  - package-ecosystem: "uv"
     directory: "/collector"
     schedule:
       interval: "weekly"
