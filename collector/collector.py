@@ -1,4 +1,5 @@
 import os
+import sys
 import sqlite3
 import logging
 import schedule
@@ -10,6 +11,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S',
+    stream=sys.stdout,
 )
 logger = logging.getLogger(__name__)
 
@@ -307,9 +309,10 @@ def run_collection():
 
 if __name__ == '__main__':
     logger.info('Lawncare collector starting up.')
-    _, lat, long_ = get_settings()
-    logger.info(f'Location: {lat}, {long_}')
+    api_key, lat, long_ = get_settings()
     logger.info(f'Data directory: {DATA_DIR}')
+    logger.info(f'Location: {lat}, {long_}')
+    logger.info(f'API key: {"set" if api_key else "NOT SET — data collection will be skipped"}')
 
     # Backfill from Jan 1 of current year on startup
     jan1 = datetime(datetime.now().year, 1, 1)

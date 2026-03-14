@@ -30,8 +30,8 @@ router.put('/', (req, res) => {
     const updateMany = db.transaction((updates) => {
       for (const [key, value] of Object.entries(updates)) {
         if (allowed.includes(key)) {
-          // Skip writing back the masked placeholder
-          if (key === 'vc_api_key' && value === '••••••••') continue;
+          // Skip writing back the masked placeholder or an empty value
+          if (key === 'vc_api_key' && (!value || value === '••••••••')) continue;
           upsert.run(key, String(value));
         }
       }

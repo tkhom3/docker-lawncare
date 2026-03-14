@@ -15,21 +15,25 @@ export default function Settings() {
   const [status, setStatus] = useState(null) // 'saved' | 'error'
   const [loading, setLoading] = useState(true)
   const [showKey, setShowKey] = useState(false)
+  const [apiKeySet, setApiKeySet] = useState(false)
 
   useEffect(() => {
     fetch('/api/settings')
       .then(r => r.json())
-      .then(data => setForm({
-        lat: data.lat || '',
-        long: data.long || '',
-        lawn_sqft: data.lawn_sqft || '',
-        vc_api_key: data.vc_api_key || '',
-        n_target: data.n_target || '',
-        p_target: data.p_target || '',
-        k_target: data.k_target || '',
-        fe_target: data.fe_target || '',
-        s_target: data.s_target || '',
-      }))
+      .then(data => {
+        setApiKeySet(!!data.vc_api_key)
+        setForm({
+          lat: data.lat || '',
+          long: data.long || '',
+          lawn_sqft: data.lawn_sqft || '',
+          vc_api_key: '',
+          n_target: data.n_target || '',
+          p_target: data.p_target || '',
+          k_target: data.k_target || '',
+          fe_target: data.fe_target || '',
+          s_target: data.s_target || '',
+        })
+      })
       .catch(() => setStatus('error'))
       .finally(() => setLoading(false))
   }, [])
@@ -90,7 +94,7 @@ export default function Settings() {
                 name="vc_api_key"
                 value={form.vc_api_key}
                 onChange={handleChange}
-                placeholder="Enter your API key"
+                placeholder={apiKeySet ? 'API key is set — enter new value to change' : 'Enter your API key'}
                 autoComplete="off"
               />
               <button type="button" className="reveal-btn" onClick={() => setShowKey(s => !s)}>
