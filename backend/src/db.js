@@ -82,6 +82,20 @@ const migrations = [
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `),
+
+  // v6 — add soil_tests table
+  () => db.exec(`
+    CREATE TABLE IF NOT EXISTS soil_tests (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      date       TEXT NOT NULL,
+      notes      TEXT,
+      ph         REAL,
+      om_pct     REAL,
+      p_ppm      REAL,
+      k_ppm      REAL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `),
 ];
 
 // ---------------------------------------------------------------------------

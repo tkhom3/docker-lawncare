@@ -4,6 +4,7 @@ const path = require('path');
 
 const weatherRouter = require('./routes/weather');
 const worklogRouter = require('./routes/worklog');
+const soiltestRouter = require('./routes/soiltest');
 const settingsRouter = require('./routes/settings');
 const statusRouter = require('./routes/status');
 
@@ -19,6 +20,7 @@ app.use(express.static(path.join(__dirname, '../public')));
 // API routes
 app.use('/api/weather', weatherRouter);
 app.use('/api/worklog', worklogRouter);
+app.use('/api/soiltest', soiltestRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/status', statusRouter);
 

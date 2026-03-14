@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import WeatherChart from './components/WeatherChart'
 import WorkLog from './components/WorkLog'
 import DollarSpotChart from './components/DollarSpotChart'
@@ -9,7 +9,24 @@ import ErrorBoundary from './components/ErrorBoundary'
 import './index.css'
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('weather')
+  const TABS = ['weather', 'predictions', 'dollarspot', 'worklog', 'settings']
+
+  function getTabFromHash() {
+    const hash = window.location.hash.slice(1)
+    return TABS.includes(hash) ? hash : 'weather'
+  }
+
+  const [activeTab, setActiveTab] = useState(getTabFromHash)
+
+  useEffect(() => {
+    const onHashChange = () => setActiveTab(getTabFromHash())
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
+  }, [])
+
+  function navigateTo(tab) {
+    window.location.hash = tab
+  }
 
   return (
     <div className="app">
@@ -20,31 +37,31 @@ export default function App() {
       <div className="tabs">
         <button
           className={`tab-btn ${activeTab === 'weather' ? 'active' : ''}`}
-          onClick={() => setActiveTab('weather')}
+          onClick={() => navigateTo('weather')}
         >
           Weather & Growth
         </button>
         <button
           className={`tab-btn ${activeTab === 'predictions' ? 'active' : ''}`}
-          onClick={() => setActiveTab('predictions')}
+          onClick={() => navigateTo('predictions')}
         >
           Predictions
         </button>
         <button
           className={`tab-btn ${activeTab === 'dollarspot' ? 'active' : ''}`}
-          onClick={() => setActiveTab('dollarspot')}
+          onClick={() => navigateTo('dollarspot')}
         >
           Dollar Spot
         </button>
         <button
           className={`tab-btn ${activeTab === 'worklog' ? 'active' : ''}`}
-          onClick={() => setActiveTab('worklog')}
+          onClick={() => navigateTo('worklog')}
         >
           Work Log
         </button>
         <button
           className={`tab-btn ${activeTab === 'settings' ? 'active' : ''}`}
-          onClick={() => setActiveTab('settings')}
+          onClick={() => navigateTo('settings')}
         >
           Settings
         </button>

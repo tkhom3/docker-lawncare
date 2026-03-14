@@ -37,12 +37,12 @@ function ArcLabel({ label, symbol, valText }) {
   )
 }
 
-function NutrientGaugeCard({ label, symbol, total, target }) {
+function NutrientGaugeCard({ label, symbol, total, target, adjusted }) {
   const pct = Math.min((total / target) * 100, 100)
   const statusColor = pct < 40 ? '#ef4444' : pct < 72 ? '#f59e0b' : '#16a34a'
   const statusLabel = pct < 40 ? 'LOW' : pct < 72 ? 'ON TRACK' : 'GREAT'
   const [tipX, tipY] = arcPoint(pct / 100)
-  const valText = `${total.toFixed(1)} / ${target} lbs`
+  const valText = `${total.toFixed(1)} / ${target.toFixed(1)} lbs`
 
   return (
     <div className="ng-card">
@@ -64,8 +64,56 @@ function NutrientGaugeCard({ label, symbol, total, target }) {
         </text>
       </ArcBase>
       <ArcLabel label={label} symbol={symbol} valText={valText} />
+      {adjusted && (
+        <div style={{ fontSize: '0.65rem', color: '#6b7280', textAlign: 'center', paddingBottom: '6px' }}>
+          soil-adjusted
+        </div>
+      )}
     </div>
   )
+}
+
+// Apply soil test adjustments to base targets (lbs for the whole lawn)
+// Uses ISU Midwest thresholds
+function applySoilAdjustments(targets, lawnSqft, soilTest) {
+  const result = { ...targets, adjusted: {} }
+  if (!soilTest || !lawnSqft) return result
+
+  const thousand = lawnSqft / 1000
+
+  if (soilTest.p_ppm !== null && soilTest.p_ppm !== undefined && targets.p_target !== null) {
+    const ppm = soilTest.p_ppm
+    const multiplier = ppm < 15 ? 1.0 : ppm < 30 ? 0.75 : ppm < 50 ? 0.5 : 0.0
+    if (multiplier !== 1.0) {
+      result.p_target = targets.p_target * multiplier
+      result.adjusted.p = true
+    }
+  }
+
+  if (soilTest.k_ppm !== null && soilTest.k_ppm !== undefined && targets.k_target !== null) {
+    const ppm = soilTest.k_ppm
+    const multiplier = ppm < 100 ? 1.0 : ppm < 150 ? 0.75 : ppm < 200 ? 0.5 : 0.0
+    if (multiplier !== 1.0) {
+      result.k_target = targets.k_target * multiplier
+      result.adjusted.k = true
+    }
+  }
+
+  if (soilTest.om_pct !== null && soilTest.om_pct !== undefined && targets.n_target !== null) {
+    const om = soilTest.om_pct
+    const multiplier = om > 5 ? 0.8 : om > 3 ? 0.9 : 1.0
+    if (multiplier !== 1.0) {
+      result.n_target = targets.n_target * multiplier
+      result.adjusted.n = true
+    }
+  }
+
+  return result
+}
+
+function soilTestLabel(fieldLabel, value, unit) {
+  if (value === null || value === undefined) return null
+  return `${fieldLabel}: ${value}${unit}`
 }
 
 function todayString() {
@@ -76,20 +124,34 @@ function todayString() {
   return `${year}-${month}-${day}`
 }
 
+const EMPTY_WORK_FORM = {
+  date: todayString(),
+  activity: '',
+  notes: '',
+  n_pct: '',
+  p_pct: '',
+  k_pct: '',
+  fe_pct: '',
+  s_pct: '',
+  lbs_applied: '',
+  spreader_setting: '',
+}
+
+const EMPTY_SOIL_FORM = {
+  date: todayString(),
+  notes: '',
+  ph: '',
+  om_pct: '',
+  p_ppm: '',
+  k_ppm: '',
+}
+
 export default function WorkLog() {
   const [entries, setEntries] = useState([])
-  const [form, setForm] = useState({
-    date: todayString(),
-    activity: '',
-    notes: '',
-    n_pct: '',
-    p_pct: '',
-    k_pct: '',
-    fe_pct: '',
-    s_pct: '',
-    lbs_applied: '',
-    spreader_setting: '',
-  })
+  const [soilTests, setSoilTests] = useState([])
+  const [workForm, setWorkForm] = useState(EMPTY_WORK_FORM)
+  const [soilForm, setSoilForm] = useState(EMPTY_SOIL_FORM)
+  const [activeTab, setActiveTab] = useState('work') // 'work' | 'soil'
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [lawnSqft, setLawnSqft] = useState(null)
@@ -101,25 +163,13 @@ export default function WorkLog() {
     s_target: null,
   })
 
-  async function fetchEntries() {
-    try {
-      const res = await fetch('/api/worklog')
-      const data = await res.json()
-      setEntries(data)
-    } catch (err) {
-      console.error('Error fetching work log:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   useEffect(() => {
-    // Fetch both settings and entries
     Promise.all([
       fetch('/api/settings').then(r => r.json()),
       fetch('/api/worklog').then(r => r.json()),
+      fetch('/api/soiltest').then(r => r.json()),
     ])
-      .then(([settings, worklog]) => {
+      .then(([settings, worklog, soiltests]) => {
         setLawnSqft(settings.lawn_sqft ? parseFloat(settings.lawn_sqft) : null)
         setTargets({
           n_target: settings.n_target ? parseFloat(settings.n_target) : null,
@@ -129,38 +179,25 @@ export default function WorkLog() {
           s_target: settings.s_target ? parseFloat(settings.s_target) : null,
         })
         setEntries(worklog)
+        setSoilTests(soiltests)
       })
       .catch(err => console.error('Error fetching data:', err))
       .finally(() => setLoading(false))
   }, [])
 
-  async function handleSubmit(e) {
+  async function handleWorkSubmit(e) {
     e.preventDefault()
-    if (!form.activity.trim()) return
+    if (!workForm.activity.trim()) return
     setSubmitting(true)
     try {
       const res = await fetch('/api/worklog', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(workForm),
       })
       if (res.ok) {
-        setForm({
-          date: todayString(),
-          activity: '',
-          notes: '',
-          n_pct: '',
-          p_pct: '',
-          k_pct: '',
-          fe_pct: '',
-          s_pct: '',
-          lbs_applied: '',
-          spreader_setting: '',
-        })
-        // Re-fetch entries
-        const updatedRes = await fetch('/api/worklog')
-        const updatedData = await updatedRes.json()
-        setEntries(updatedData)
+        setWorkForm({ ...EMPTY_WORK_FORM, date: todayString() })
+        setEntries(await fetch('/api/worklog').then(r => r.json()))
       }
     } catch (err) {
       console.error('Error creating work log entry:', err)
@@ -169,17 +206,41 @@ export default function WorkLog() {
     }
   }
 
-  async function handleDelete(id) {
+  async function handleSoilSubmit(e) {
+    e.preventDefault()
+    setSubmitting(true)
     try {
-      const res = await fetch(`/api/worklog/${id}`, { method: 'DELETE' })
+      const res = await fetch('/api/soiltest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(soilForm),
+      })
       if (res.ok) {
-        // Re-fetch entries
-        const updatedRes = await fetch('/api/worklog')
-        const updatedData = await updatedRes.json()
-        setEntries(updatedData)
+        setSoilForm({ ...EMPTY_SOIL_FORM, date: todayString() })
+        setSoilTests(await fetch('/api/soiltest').then(r => r.json()))
       }
     } catch (err) {
+      console.error('Error creating soil test:', err)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleDeleteWork(id) {
+    try {
+      const res = await fetch(`/api/worklog/${id}`, { method: 'DELETE' })
+      if (res.ok) setEntries(await fetch('/api/worklog').then(r => r.json()))
+    } catch (err) {
       console.error('Error deleting work log entry:', err)
+    }
+  }
+
+  async function handleDeleteSoil(id) {
+    try {
+      const res = await fetch(`/api/soiltest/${id}`, { method: 'DELETE' })
+      if (res.ok) setSoilTests(await fetch('/api/soiltest').then(r => r.json()))
+    } catch (err) {
+      console.error('Error deleting soil test:', err)
     }
   }
 
@@ -187,9 +248,9 @@ export default function WorkLog() {
   function getYearlyTotals() {
     const currentYear = new Date().getFullYear()
     const yearlyEntries = entries.filter(e => e.date.startsWith(currentYear.toString()))
-    
+
     let n_total = 0, p_total = 0, k_total = 0, fe_total = 0, s_total = 0
-    
+
     yearlyEntries.forEach(entry => {
       const lbs = entry.lbs_applied ? parseFloat(entry.lbs_applied) : 0
       if (entry.n_pct && lbs) n_total += (parseFloat(entry.n_pct) / 100) * lbs
@@ -198,9 +259,13 @@ export default function WorkLog() {
       if (entry.fe_pct && lbs) fe_total += (parseFloat(entry.fe_pct) / 100) * lbs
       if (entry.s_pct && lbs) s_total += (parseFloat(entry.s_pct) / 100) * lbs
     })
-    
+
     return { n_total, p_total, k_total, fe_total, s_total }
   }
+
+  // Most recent soil test (already sorted DESC by date from API)
+  const latestSoilTest = soilTests.length > 0 ? soilTests[0] : null
+  const adjustedTargets = applySoilAdjustments(targets, lawnSqft, latestSoilTest)
 
   return (
     <>
@@ -208,161 +273,288 @@ export default function WorkLog() {
       {!loading && (
         <div className="card">
           <h2>Yearly Nutrient Summary</h2>
+          {latestSoilTest && (
+            <div style={{ fontSize: '0.78rem', color: '#6b7280', marginBottom: '12px' }}>
+              Targets adjusted from soil test on {latestSoilTest.date}
+            </div>
+          )}
           {(() => {
             const { n_total, p_total, k_total, fe_total, s_total } = getYearlyTotals()
-            const hasTargets = targets.n_target || targets.p_target || targets.k_target || targets.fe_target || targets.s_target
+            const hasTargets = adjustedTargets.n_target || adjustedTargets.p_target || adjustedTargets.k_target || adjustedTargets.fe_target || adjustedTargets.s_target
 
             if (!hasTargets) {
               return <div className="empty-state">Set nutrient targets in settings and log work to see progress.</div>
             }
 
             const nutrients = [
-              targets.n_target && { label: 'Nitrogen',   symbol: 'N',  total: n_total,  target: targets.n_target },
-              targets.p_target && { label: 'Phosphorus', symbol: 'P',  total: p_total,  target: targets.p_target },
-              targets.k_target && { label: 'Potassium',  symbol: 'K',  total: k_total,  target: targets.k_target },
-              targets.fe_target && { label: 'Iron',      symbol: 'Fe', total: fe_total, target: targets.fe_target },
-              targets.s_target && { label: 'Sulfur',     symbol: 'S',  total: s_total,  target: targets.s_target },
+              adjustedTargets.n_target && { label: 'Nitrogen',   symbol: 'N',  total: n_total,  target: adjustedTargets.n_target,  adjusted: adjustedTargets.adjusted.n },
+              adjustedTargets.p_target !== null && adjustedTargets.p_target > 0 && { label: 'Phosphorus', symbol: 'P',  total: p_total,  target: adjustedTargets.p_target,  adjusted: adjustedTargets.adjusted.p },
+              adjustedTargets.k_target !== null && adjustedTargets.k_target > 0 && { label: 'Potassium',  symbol: 'K',  total: k_total,  target: adjustedTargets.k_target,  adjusted: adjustedTargets.adjusted.k },
+              adjustedTargets.fe_target && { label: 'Iron',      symbol: 'Fe', total: fe_total, target: adjustedTargets.fe_target, adjusted: false },
+              adjustedTargets.s_target && { label: 'Sulfur',     symbol: 'S',  total: s_total,  target: adjustedTargets.s_target,  adjusted: false },
+            ].filter(Boolean)
+
+            const skipped = [
+              adjustedTargets.adjusted.p && adjustedTargets.p_target === 0 && 'P (soil level high)',
+              adjustedTargets.adjusted.k && adjustedTargets.k_target === 0 && 'K (soil level high)',
             ].filter(Boolean)
 
             return (
-              <div className="nutrient-gauges">
-                {nutrients.map(n => (
-                  <NutrientGaugeCard key={n.symbol} {...n} />
-                ))}
-              </div>
+              <>
+                <div className="nutrient-gauges">
+                  {nutrients.map(n => (
+                    <NutrientGaugeCard key={n.symbol} {...n} />
+                  ))}
+                </div>
+                {skipped.length > 0 && (
+                  <div style={{ fontSize: '0.78rem', color: '#6b7280', marginTop: '10px' }}>
+                    Skipped (soil level high): {skipped.join(', ')}
+                  </div>
+                )}
+              </>
             )
           })()}
         </div>
       )}
 
-      {/* Add new entry form */}
+      {/* Log form with tab switcher */}
       <div className="card">
-        <h2>Log Work</h2>
-        <form onSubmit={handleSubmit}>
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="date">Date</label>
-              <input
-                id="date"
-                type="date"
-                value={form.date}
-                onChange={(e) => setForm({ ...form, date: e.target.value })}
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="activity">Activity</label>
-              <input
-                id="activity"
-                type="text"
-                placeholder="e.g. Applied fertilizer"
-                value={form.activity}
-                onChange={(e) => setForm({ ...form, activity: e.target.value })}
-                required
-              />
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="notes">Notes</label>
-            <textarea
-              id="notes"
-              placeholder="Optional notes..."
-              value={form.notes}
-              onChange={(e) => setForm({ ...form, notes: e.target.value })}
-            />
-          </div>
-
-          <div className="form-section-header">Product Details</div>
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="n_pct">Nitrogen (N) %</label>
-              <input
-                id="n_pct"
-                type="number"
-                step="0.01"
-                placeholder="e.g. 46"
-                value={form.n_pct}
-                onChange={(e) => setForm({ ...form, n_pct: e.target.value })}
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="p_pct">Phosphorus (P) %</label>
-              <input
-                id="p_pct"
-                type="number"
-                step="0.01"
-                placeholder="e.g. 0"
-                value={form.p_pct}
-                onChange={(e) => setForm({ ...form, p_pct: e.target.value })}
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="k_pct">Potassium (K) %</label>
-              <input
-                id="k_pct"
-                type="number"
-                step="0.01"
-                placeholder="e.g. 0"
-                value={form.k_pct}
-                onChange={(e) => setForm({ ...form, k_pct: e.target.value })}
-              />
-            </div>
-          </div>
-
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="fe_pct">Iron (Fe) %</label>
-              <input
-                id="fe_pct"
-                type="number"
-                step="0.01"
-                placeholder="e.g. 0"
-                value={form.fe_pct}
-                onChange={(e) => setForm({ ...form, fe_pct: e.target.value })}
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="s_pct">Sulfur (S) %</label>
-              <input
-                id="s_pct"
-                type="number"
-                step="0.01"
-                placeholder="e.g. 0"
-                value={form.s_pct}
-                onChange={(e) => setForm({ ...form, s_pct: e.target.value })}
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="lbs_applied">Pounds Applied</label>
-              <input
-                id="lbs_applied"
-                type="number"
-                step="0.1"
-                placeholder="e.g. 10.5"
-                value={form.lbs_applied}
-                onChange={(e) => setForm({ ...form, lbs_applied: e.target.value })}
-              />
-            </div>
-          </div>
-
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="spreader_setting">Spreader Setting</label>
-              <input
-                id="spreader_setting"
-                type="text"
-                placeholder="e.g. 18"
-                value={form.spreader_setting}
-                onChange={(e) => setForm({ ...form, spreader_setting: e.target.value })}
-              />
-            </div>
-          </div>
-
-          <button type="submit" className="submit-btn" disabled={submitting}>
-            {submitting ? 'Saving...' : 'Log Work'}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+          <button
+            type="button"
+            className={activeTab === 'work' ? 'submit-btn' : 'submit-btn secondary'}
+            style={{ flex: 1 }}
+            onClick={() => setActiveTab('work')}
+          >
+            Log Work
           </button>
-        </form>
+          <button
+            type="button"
+            className={activeTab === 'soil' ? 'submit-btn' : 'submit-btn secondary'}
+            style={{ flex: 1 }}
+            onClick={() => setActiveTab('soil')}
+          >
+            Log Soil Test
+          </button>
+        </div>
+
+        {activeTab === 'work' && (
+          <form onSubmit={handleWorkSubmit}>
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="date">Date</label>
+                <input
+                  id="date"
+                  type="date"
+                  value={workForm.date}
+                  onChange={(e) => setWorkForm({ ...workForm, date: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="activity">Activity</label>
+                <input
+                  id="activity"
+                  type="text"
+                  placeholder="e.g. Applied fertilizer"
+                  value={workForm.activity}
+                  onChange={(e) => setWorkForm({ ...workForm, activity: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="notes">Notes</label>
+              <textarea
+                id="notes"
+                placeholder="Optional notes..."
+                value={workForm.notes}
+                onChange={(e) => setWorkForm({ ...workForm, notes: e.target.value })}
+              />
+            </div>
+
+            <div className="form-section-header">Product Details</div>
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="n_pct">Nitrogen (N) %</label>
+                <input
+                  id="n_pct"
+                  type="number"
+                  step="0.01"
+                  placeholder="e.g. 46"
+                  value={workForm.n_pct}
+                  onChange={(e) => setWorkForm({ ...workForm, n_pct: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="p_pct">Phosphorus (P) %</label>
+                <input
+                  id="p_pct"
+                  type="number"
+                  step="0.01"
+                  placeholder="e.g. 0"
+                  value={workForm.p_pct}
+                  onChange={(e) => setWorkForm({ ...workForm, p_pct: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="k_pct">Potassium (K) %</label>
+                <input
+                  id="k_pct"
+                  type="number"
+                  step="0.01"
+                  placeholder="e.g. 0"
+                  value={workForm.k_pct}
+                  onChange={(e) => setWorkForm({ ...workForm, k_pct: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="fe_pct">Iron (Fe) %</label>
+                <input
+                  id="fe_pct"
+                  type="number"
+                  step="0.01"
+                  placeholder="e.g. 0"
+                  value={workForm.fe_pct}
+                  onChange={(e) => setWorkForm({ ...workForm, fe_pct: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="s_pct">Sulfur (S) %</label>
+                <input
+                  id="s_pct"
+                  type="number"
+                  step="0.01"
+                  placeholder="e.g. 0"
+                  value={workForm.s_pct}
+                  onChange={(e) => setWorkForm({ ...workForm, s_pct: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="lbs_applied">Pounds Applied</label>
+                <input
+                  id="lbs_applied"
+                  type="number"
+                  step="0.1"
+                  placeholder="e.g. 10.5"
+                  value={workForm.lbs_applied}
+                  onChange={(e) => setWorkForm({ ...workForm, lbs_applied: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="spreader_setting">Spreader Setting</label>
+                <input
+                  id="spreader_setting"
+                  type="text"
+                  placeholder="e.g. 18"
+                  value={workForm.spreader_setting}
+                  onChange={(e) => setWorkForm({ ...workForm, spreader_setting: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <button type="submit" className="submit-btn" disabled={submitting}>
+              {submitting ? 'Saving...' : 'Log Work'}
+            </button>
+          </form>
+        )}
+
+        {activeTab === 'soil' && (
+          <form onSubmit={handleSoilSubmit}>
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="soil-date">Date</label>
+                <input
+                  id="soil-date"
+                  type="date"
+                  value={soilForm.date}
+                  onChange={(e) => setSoilForm({ ...soilForm, date: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="form-section-header">Soil Test Results</div>
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="ph">pH</label>
+                <input
+                  id="ph"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="14"
+                  placeholder="e.g. 6.5"
+                  value={soilForm.ph}
+                  onChange={(e) => setSoilForm({ ...soilForm, ph: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="om_pct">Organic Matter (%)</label>
+                <input
+                  id="om_pct"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  placeholder="e.g. 3.2"
+                  value={soilForm.om_pct}
+                  onChange={(e) => setSoilForm({ ...soilForm, om_pct: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="p_ppm">Phosphorus (ppm)</label>
+                <input
+                  id="p_ppm"
+                  type="number"
+                  step="1"
+                  min="0"
+                  placeholder="e.g. 25"
+                  value={soilForm.p_ppm}
+                  onChange={(e) => setSoilForm({ ...soilForm, p_ppm: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="k_ppm">Potassium (ppm)</label>
+                <input
+                  id="k_ppm"
+                  type="number"
+                  step="1"
+                  min="0"
+                  placeholder="e.g. 130"
+                  value={soilForm.k_ppm}
+                  onChange={(e) => setSoilForm({ ...soilForm, k_ppm: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="soil-notes">Notes</label>
+              <textarea
+                id="soil-notes"
+                placeholder="e.g. ISU Extension soil test"
+                value={soilForm.notes}
+                onChange={(e) => setSoilForm({ ...soilForm, notes: e.target.value })}
+              />
+            </div>
+
+            <div style={{ fontSize: '0.78rem', color: '#6b7280', marginBottom: '12px' }}>
+              P and K readings adjust yearly targets. Organic matter adjusts nitrogen target.
+            </div>
+
+            <button type="submit" className="submit-btn" disabled={submitting}>
+              {submitting ? 'Saving...' : 'Save Soil Test'}
+            </button>
+          </form>
+        )}
       </div>
 
       {/* Work log entries */}
@@ -383,11 +575,11 @@ export default function WorkLog() {
               const fe_total = entry.fe_pct && lbs ? (entry.fe_pct / 100) * lbs : null
               const s_total = entry.s_pct && lbs ? (entry.s_pct / 100) * lbs : null
 
-              const n_per_k = n_total && perThousandSqft ? n_total / (lawnSqft / 1000) : null
-              const p_per_k = p_total && perThousandSqft ? p_total / (lawnSqft / 1000) : null
-              const k_per_k = k_total && perThousandSqft ? k_total / (lawnSqft / 1000) : null
-              const fe_per_k = fe_total && perThousandSqft ? fe_total / (lawnSqft / 1000) : null
-              const s_per_k = s_total && perThousandSqft ? s_total / (lawnSqft / 1000) : null
+              const n_per_k = n_total && lawnSqft ? n_total / (lawnSqft / 1000) : null
+              const p_per_k = p_total && lawnSqft ? p_total / (lawnSqft / 1000) : null
+              const k_per_k = k_total && lawnSqft ? k_total / (lawnSqft / 1000) : null
+              const fe_per_k = fe_total && lawnSqft ? fe_total / (lawnSqft / 1000) : null
+              const s_per_k = s_total && lawnSqft ? s_total / (lawnSqft / 1000) : null
 
               return (
                 <div key={entry.id} className="worklog-entry">
@@ -398,7 +590,7 @@ export default function WorkLog() {
                     </div>
                     <button
                       className="delete-btn"
-                      onClick={() => handleDelete(entry.id)}
+                      onClick={() => handleDeleteWork(entry.id)}
                       title="Delete entry"
                     >
                       Delete
@@ -471,6 +663,53 @@ export default function WorkLog() {
           </div>
         )}
       </div>
+
+      {/* Soil test history */}
+      {soilTests.length > 0 && (
+        <div className="card">
+          <h2>Soil Test History</h2>
+          <div className="worklog-entries">
+            {soilTests.map((test) => {
+              const fields = [
+                soilTestLabel('pH', test.ph, ''),
+                soilTestLabel('OM', test.om_pct, '%'),
+                soilTestLabel('P', test.p_ppm, ' ppm'),
+                soilTestLabel('K', test.k_ppm, ' ppm'),
+              ].filter(Boolean)
+
+              return (
+                <div key={test.id} className="worklog-entry">
+                  <div className="entry-header">
+                    <div className="entry-title">
+                      <span className="entry-date">{test.date}</span>
+                      <span className="entry-activity">Soil Test</span>
+                    </div>
+                    <button
+                      className="delete-btn"
+                      onClick={() => handleDeleteSoil(test.id)}
+                      title="Delete soil test"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                  {fields.length > 0 && (
+                    <div className="entry-nutrients">
+                      <div className="nutrient-row">
+                        {fields.map(f => (
+                          <div key={f} className="nutrient">
+                            <span className="nutrient-value">{f}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {test.notes && <div className="entry-notes"><strong>Notes:</strong> {test.notes}</div>}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </>
   )
 }
