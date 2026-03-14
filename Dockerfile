@@ -39,7 +39,7 @@ COPY --from=backend-build /app/public ./public
 
 # Install and copy Python collector
 COPY collector/pyproject.toml ./collector/
-RUN uv pip install --system -r /app/collector/pyproject.toml
+RUN uv pip install --system --break-system-packages -r /app/collector/pyproject.toml
 COPY collector/collector.py ./collector/
 
 # Supervisord config and entrypoint
