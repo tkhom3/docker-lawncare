@@ -92,7 +92,7 @@ export default function Settings() {
     
     const thousand = sqft / 1000
     return {
-      n_target: (16 * thousand).toFixed(1),
+      n_target: (4 * thousand).toFixed(1),
       p_target: (2.5 * thousand).toFixed(1),
       k_target: (5 * thousand).toFixed(1),
       fe_target: (0.3 * thousand).toFixed(1),
