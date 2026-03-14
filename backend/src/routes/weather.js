@@ -99,6 +99,11 @@ router.get('/predictions', (req, res) => {
     const avgDailyGdd = recent.reduce((s, r) => s + toGdd(r.temp_high, r.temp_low), 0)
       / Math.max(recent.length, 1);
 
+    // No data yet — return empty response
+    if (!history.length && !forecast.length) {
+      return res.json({ history: [], forecast: [], estimated: [], crossings: [], avgDailyGdd: 0 });
+    }
+
     // Extrapolate day-by-day until all thresholds crossed (max 180 days)
     const maxThreshold = Math.max(...THRESHOLDS.map(t => t.gdd));
     const lastDate = new Date(
