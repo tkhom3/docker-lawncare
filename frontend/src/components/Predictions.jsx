@@ -41,7 +41,12 @@ export default function Predictions() {
 
   if (loading) return <div className="loading">Loading predictions...</div>
   if (!data || !data.history || (!data.history.length && !data.forecast.length)) {
-    return <div className="empty-state">No weather data yet. The collector will populate data on its next run.</div>
+    return (
+      <div className="card">
+        <h2>Cumulative GDD Projection (Base 50°F)</h2>
+        <div className="empty-state">No weather data yet. The collector runs daily to fetch data.</div>
+      </div>
+    )
   }
 
   // Merge all series into one chart array
