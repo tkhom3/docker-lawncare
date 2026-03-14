@@ -1,0 +1,41 @@
+version: 2
+updates:
+  # GitHub Actions — chore prefix, no release triggered
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore"
+
+  # Backend Node dependencies — fix prefix, triggers patch release
+  - package-ecosystem: "npm"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "fix"
+
+  # Frontend Node dependencies — fix prefix, triggers patch release
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "fix"
+
+  # Root npm (semantic-release tooling) — chore prefix, no release triggered
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore"
+
+  # Python collector dependencies — fix prefix, triggers patch release
+  - package-ecosystem: "pip"
+    directory: "/collector"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "fix"
