@@ -8,29 +8,13 @@ updates:
     commit-message:
       prefix: "chore"
 
-  # Backend Node dependencies — fix prefix, triggers patch release
-  - package-ecosystem: "npm"
-    directory: "/backend"
-    schedule:
-      interval: "weekly"
-    commit-message:
-      prefix: "fix"
-
-  # Frontend Node dependencies — fix prefix, triggers patch release
-  - package-ecosystem: "npm"
-    directory: "/frontend"
-    schedule:
-      interval: "weekly"
-    commit-message:
-      prefix: "fix"
-
-  # Root npm (semantic-release tooling) — chore prefix, no release triggered
+  # All npm dependencies (root workspace covers backend + frontend) — fix prefix, triggers patch release
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
       interval: "weekly"
     commit-message:
-      prefix: "chore"
+      prefix: "fix"
 
   # Python collector dependencies — fix prefix, triggers patch release
   - package-ecosystem: "pip"
