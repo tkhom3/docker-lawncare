@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 export default function Settings() {
   const [form, setForm] = useState({
@@ -16,6 +16,9 @@ export default function Settings() {
   const [loading, setLoading] = useState(true)
   const [showKey, setShowKey] = useState(false)
   const [apiKeySet, setApiKeySet] = useState(false)
+  const [collectorLog, setCollectorLog] = useState([]) // { level, message }[]
+  const [collectingDone, setCollectingDone] = useState(false)
+  const logEndRef = useRef(null)
 
   useEffect(() => {
     fetch('/api/settings')
@@ -50,9 +53,36 @@ export default function Settings() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form),
     })
-      .then(r => r.ok ? setStatus('saved') : setStatus('error'))
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(data => {
+        setStatus('saved')
+        if (data.backfillTriggered) {
+          setCollectorLog([])
+          setCollectingDone(false)
+          // Get current log position then open SSE from there
+          fetch('/api/status/position')
+            .then(r => r.json())
+            .then(({ id }) => {
+              const es = new EventSource(`/api/status/stream?since_id=${id}`)
+              es.onmessage = (e) => {
+                const entry = JSON.parse(e.data)
+                setCollectorLog(prev => [...prev, entry])
+                if (entry.level === 'done') {
+                  setCollectingDone(true)
+                  es.close()
+                }
+              }
+              es.onerror = () => es.close()
+            })
+        }
+      })
       .catch(() => setStatus('error'))
   }
+
+  // Auto-scroll log to bottom as new entries arrive
+  useEffect(() => {
+    logEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [collectorLog])
 
   // Calculate recommended nutrient targets based on lawn size
   // For cool season grass (midwest): lbs per 1000 sq ft
@@ -107,7 +137,7 @@ export default function Settings() {
         <div className="settings-group">
           <h3>Location</h3>
           <p className="gdd-note">
-            Used by the weather collector. Changes take effect on the next scheduled collection (6:00 AM daily).
+            Used by the weather collector. Changes take effect on the next scheduled collection (00:00 daily).
           </p>
           <label>
             Latitude
@@ -281,6 +311,22 @@ export default function Settings() {
           {status === 'saved' && <span className="status-ok">Saved</span>}
           {status === 'error' && <span className="status-err">Error saving settings</span>}
         </div>
+
+        {collectorLog.length > 0 && (
+          <div className="collector-log">
+            <h3 className="collector-log-title">
+              {collectingDone ? 'Collection complete' : 'Collecting data\u2026'}
+            </h3>
+            <div className="collector-log-entries">
+              {collectorLog.map((entry, i) => (
+                <div key={i} className={`collector-log-entry collector-log-${entry.level}`}>
+                  <span className="collector-log-msg">{entry.message}</span>
+                </div>
+              ))}
+              <div ref={logEndRef} />
+            </div>
+          </div>
+        )}
       </form>
     </div>
   )

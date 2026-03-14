@@ -15,17 +15,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Config from environment (used as fallbacks if not set in DB)
 DATA_DIR = os.environ.get('DATA_DIR', '/app/data')
 DB_PATH = os.path.join(DATA_DIR, 'lawncare.db')
 
-_ENV_API_KEY = os.environ.get('VISUAL_CROSSING_API_KEY', '')
-_ENV_LAT = os.environ.get('LAT', '40.7128')
-_ENV_LONG = os.environ.get('LONG', '-74.0060')
-
 
 def get_settings():
-    """Return (api_key, lat, long) from DB, falling back to env vars."""
+    """Return (api_key, lat, long) from DB. Returns empty strings if not configured."""
     try:
         conn = sqlite3.connect(DB_PATH)
         rows = conn.execute(
@@ -34,13 +29,28 @@ def get_settings():
         conn.close()
         s = {r[0]: r[1] for r in rows}
         return (
-            s.get('vc_api_key', '').strip() or _ENV_API_KEY,
-            s.get('lat', '').strip() or _ENV_LAT,
-            s.get('long', '').strip() or _ENV_LONG,
+            s.get('vc_api_key', '').strip(),
+            s.get('lat', '').strip(),
+            s.get('long', '').strip(),
         )
     except Exception as e:
-        logger.error(f'Failed to read settings from DB, falling back to env vars: {e}')
-        return _ENV_API_KEY, _ENV_LAT, _ENV_LONG
+        logger.error(f'Failed to read settings from DB: {e}')
+        return '', '', ''
+
+
+def write_log(level, message):
+    """Write a status entry to collector_log for the frontend SSE stream."""
+    logger.info(f'[{level.upper()}] {message}')
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.execute(
+            'INSERT INTO collector_log (level, message) VALUES (?, ?)',
+            (level, message),
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning(f'Failed to write log entry: {e}')
 
 
 def get_db():
@@ -78,6 +88,13 @@ def get_db():
             notes TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
+
+        CREATE TABLE IF NOT EXISTS collector_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            level TEXT NOT NULL,
+            message TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
     """)
     conn.commit()
     # Migrations
@@ -94,81 +111,153 @@ def get_db():
     return conn
 
 
-def backfill_history(days=30):
-    """Fetch up to `days` days of history and insert any missing rows."""
-    API_KEY, LAT, LONG = get_settings()
-    if not API_KEY:
-        logger.warning('VISUAL_CROSSING_API_KEY not set, skipping backfill.')
-        return
-
-    start = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
-    end = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
+def fetch_chunk(api_key, lat, long_, start_date, end_date, conn):
+    """
+    Fetch a single date range from Visual Crossing and insert into weather_history.
+    Returns (inserted, error_message_or_None).
+    """
+    start_str = start_date.strftime('%Y-%m-%d')
+    end_str = end_date.strftime('%Y-%m-%d')
     url = (
         f'https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services'
         f'/weatherdata/history'
         f'?aggregateHours=24'
-        f'&startDateTime={start}T00:00:00'
-        f'&endDateTime={end}T23:58:00'
+        f'&startDateTime={start_str}T00:00:00'
+        f'&endDateTime={end_str}T23:58:00'
         f'&contentType=json'
         f'&locationMode=single'
-        f'&locations={LAT},{LONG}'
+        f'&locations={lat},{long_}'
         f'&unitGroup=metric'
         f'&collectStationContribution=true'
-        f'&key={API_KEY}'
+        f'&key={api_key}'
     )
-
     try:
-        logger.info(f'Backfilling history from {start} to {end} for {LAT},{LONG}...')
         resp = requests.get(url, timeout=60)
+        if resp.status_code == 429:
+            return 0, '429 rate limit — try again tomorrow'
         if not resp.ok:
-            logger.error(f'Backfill HTTP {resp.status_code}: {resp.text[:200]}')
-            resp.raise_for_status()
-        data = resp.json()
+            return 0, f'HTTP {resp.status_code}: {resp.text[:100]}'
 
+        data = resp.json()
         values = data.get('location', {}).get('values', [])
         if not values:
-            logger.warning('No values returned during backfill.')
-            return
+            return 0, None
 
-        conn = get_db()
         inserted = 0
-        skipped = 0
-        try:
-            for row in values:
-                raw_dt = row.get('datetimeStr') or row.get('datetime')
-                if raw_dt is None:
-                    continue
-                date_str = str(raw_dt)[:10]
-                cursor = conn.execute(
-                    """
-                    INSERT OR IGNORE INTO weather_history
-                        (date, temp_avg, temp_high, temp_low, humidity, precip, source)
-                    VALUES (?, ?, ?, ?, ?, ?, 'VC')
-                    """,
-                    (date_str, row.get('temp'), row.get('maxt'), row.get('mint'),
-                     row.get('humidity'), row.get('precip')),
-                )
-                if cursor.rowcount:
-                    inserted += 1
-                else:
-                    skipped += 1
-            conn.commit()
-        finally:
-            conn.close()
-
-        logger.info(f'Backfill complete: {inserted} inserted, {skipped} already existed.')
+        for row in values:
+            raw_dt = row.get('datetimeStr') or row.get('datetime')
+            if raw_dt is None:
+                continue
+            date_str = str(raw_dt)[:10]
+            cursor = conn.execute(
+                """
+                INSERT OR IGNORE INTO weather_history
+                    (date, temp_avg, temp_high, temp_low, humidity, precip, source)
+                VALUES (?, ?, ?, ?, ?, ?, 'VC')
+                """,
+                (date_str, row.get('temp'), row.get('maxt'), row.get('mint'),
+                 row.get('humidity'), row.get('precip')),
+            )
+            if cursor.rowcount:
+                inserted += 1
+        conn.commit()
+        return inserted, None
 
     except requests.RequestException as e:
-        logger.error(f'HTTP error during backfill: {e}')
-    except (KeyError, IndexError, ValueError) as e:
-        logger.error(f'Parse error during backfill: {e}')
+        return 0, str(e)
+
+
+def backfill_history(log_progress=False):
+    """
+    Fetch weather history from Jan 1 of the current year in monthly chunks,
+    processing most recent months first. Skips months already fully populated.
+    """
+    API_KEY, LAT, LONG = get_settings()
+    if not API_KEY:
+        if log_progress:
+            write_log('warning', 'API key not set — skipping backfill.')
+        else:
+            logger.warning(
+                'VISUAL_CROSSING_API_KEY not set, skipping backfill.')
+        return
+
+    today = datetime.now().date()
+    start_of_year = today.replace(month=1, day=1)
+    yesterday = today - timedelta(days=1)
+
+    if yesterday < start_of_year:
+        return  # Nothing to backfill (first day of year)
+
+    # Build monthly chunks, most recent first
+    chunks = []
+    chunk_end = yesterday
+    while chunk_end >= start_of_year:
+        chunk_start = chunk_end.replace(day=1)
+        if chunk_start < start_of_year:
+            chunk_start = start_of_year
+        chunks.append((chunk_start, chunk_end))
+        chunk_end = chunk_start - timedelta(days=1)
+
+    if log_progress:
+        write_log(
+            'info', f'Checking {len(chunks)} month(s) of history ({start_of_year} → {yesterday})...')
+
+    conn = get_db()
+    try:
+        for i, (chunk_start, chunk_end) in enumerate(chunks):
+            month_label = chunk_start.strftime('%b %Y')
+            days_in_chunk = (chunk_end - chunk_start).days + 1
+
+            # Skip if all days in this chunk are already in the DB
+            existing = conn.execute(
+                'SELECT COUNT(*) FROM weather_history WHERE date >= ? AND date <= ?',
+                (chunk_start.isoformat(), chunk_end.isoformat()),
+            ).fetchone()[0]
+
+            if existing >= days_in_chunk:
+                logger.info(
+                    f'Backfill: {month_label} already complete, skipping.')
+                if log_progress:
+                    write_log('info', f'{month_label}: already complete.')
+                continue
+
+            logger.info(
+                f'Backfill: fetching {month_label} ({chunk_start} to {chunk_end})...')
+            if log_progress:
+                write_log('info', f'Fetching {month_label}...')
+
+            inserted, error = fetch_chunk(
+                API_KEY, LAT, LONG, chunk_start, chunk_end, conn)
+
+            if error:
+                logger.error(f'Backfill {month_label}: {error}')
+                if log_progress:
+                    write_log('error', f'{month_label}: {error}')
+                if '429' in error:
+                    if log_progress:
+                        write_log(
+                            'warning', 'Rate limited — remaining months will retry on next collection.')
+                    break
+            else:
+                logger.info(
+                    f'Backfill {month_label}: {inserted} new day(s) added.')
+                if log_progress:
+                    write_log(
+                        'info', f'{month_label}: {inserted} new day(s) added.')
+
+            # Pause between chunks to avoid rate limits
+            if i < len(chunks) - 1:
+                time.sleep(2)
+    finally:
+        conn.close()
 
 
 def fetch_history():
     """Fetch yesterday's historical weather data from Visual Crossing."""
     API_KEY, LAT, LONG = get_settings()
     if not API_KEY:
-        logger.warning('VISUAL_CROSSING_API_KEY not set, skipping history fetch.')
+        logger.warning(
+            'VISUAL_CROSSING_API_KEY not set, skipping history fetch.')
         return
 
     yesterday = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d')
@@ -187,7 +276,7 @@ def fetch_history():
     )
 
     try:
-        logger.info(f'Fetching history for {yesterday} ({LAT},{LONG})...')
+        logger.info(f'Fetching history for {yesterday}...')
         resp = requests.get(url, timeout=30)
         if not resp.ok:
             logger.error(f'History HTTP {resp.status_code}: {resp.text[:200]}')
@@ -223,7 +312,8 @@ def fetch_history():
                     f'low={temp_low}°C humidity={humidity}% precip={precip}mm'
                 )
             else:
-                logger.info(f'History already exists for {yesterday}, skipped.')
+                logger.info(
+                    f'History already exists for {yesterday}, skipped.')
         finally:
             conn.close()
 
@@ -237,7 +327,8 @@ def fetch_forecast():
     """Fetch upcoming forecast data from Visual Crossing."""
     API_KEY, LAT, LONG = get_settings()
     if not API_KEY:
-        logger.warning('VISUAL_CROSSING_API_KEY not set, skipping forecast fetch.')
+        logger.warning(
+            'VISUAL_CROSSING_API_KEY not set, skipping forecast fetch.')
         return
 
     url = (
@@ -252,10 +343,11 @@ def fetch_forecast():
     )
 
     try:
-        logger.info(f'Fetching forecast ({LAT},{LONG})...')
+        logger.info(f'Fetching forecast...')
         resp = requests.get(url, timeout=30)
         if not resp.ok:
-            logger.error(f'Forecast HTTP {resp.status_code}: {resp.text[:200]}')
+            logger.error(
+                f'Forecast HTTP {resp.status_code}: {resp.text[:200]}')
             resp.raise_for_status()
         data = resp.json()
 
@@ -275,7 +367,8 @@ def fetch_forecast():
                     epoch_sec = int(raw_dt)
                     if epoch_sec > 1e10:
                         epoch_sec = epoch_sec // 1000
-                    date_str = datetime.fromtimestamp(epoch_sec, tz=timezone.utc).strftime('%Y-%m-%d')
+                    date_str = datetime.fromtimestamp(
+                        epoch_sec, tz=timezone.utc).strftime('%Y-%m-%d')
                 except (TypeError, ValueError, OSError):
                     date_str = str(raw_dt)[:10]
 
@@ -302,7 +395,7 @@ def fetch_forecast():
 
 
 def run_collection():
-    """Run history, forecast, and soil temp collection."""
+    """Run history and forecast collection."""
     logger.info('--- Starting data collection ---')
     try:
         fetch_history()
@@ -329,7 +422,8 @@ def wait_for_db(retries=10, delay=3):
             conn.close()
             return True
         except Exception:
-            logger.info(f'Waiting for database... (attempt {attempt}/{retries})')
+            logger.info(
+                f'Waiting for database... (attempt {attempt}/{retries})')
             time.sleep(delay)
     logger.error('Database not ready after maximum retries.')
     return False
@@ -343,20 +437,19 @@ if __name__ == '__main__':
         sys.exit(1)
 
     api_key, lat, long_ = get_settings()
-    logger.info(f'Location: {lat}, {long_}')
-    logger.info(f'API key: {"set" if api_key else "NOT SET — set it in the Settings page"}')
+    if api_key and lat and long_:
+        logger.info(f'Location: {lat}, {long_}')
+        logger.info('API key: set')
+    else:
+        logger.info(
+            'Settings not configured — waiting for user to set them in the Settings page.')
 
-    # Backfill from Jan 1 of current year on startup
-    jan1 = datetime(datetime.now().year, 1, 1)
-    days_since_jan1 = (datetime.now() - jan1).days
-    backfill_history(days=days_since_jan1)
-
-    # Run immediately on startup
+    backfill_history(log_progress=False)
     run_collection()
 
-    # Schedule daily at 6:00 AM
-    schedule.every().day.at('06:00').do(run_collection)
-    logger.info('Scheduled daily collection at 06:00. Waiting...')
+    # Schedule daily at 00:00
+    schedule.every().day.at('00:00').do(run_collection)
+    logger.info('Scheduled daily collection at 00:00. Waiting...')
 
     while True:
         schedule.run_pending()
@@ -367,6 +460,8 @@ if __name__ == '__main__':
             except OSError:
                 pass
             logger.info('Trigger file detected — running collection now.')
-            backfill_history(days=(datetime.now() - datetime(datetime.now().year, 1, 1)).days)
+            write_log('info', 'Settings saved — starting data collection...')
+            backfill_history(log_progress=True)
             run_collection()
-        time.sleep(60)
+            write_log('done', 'All done! Reload the page to see your data.')
+        time.sleep(5)

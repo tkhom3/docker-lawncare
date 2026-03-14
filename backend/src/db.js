@@ -40,6 +40,17 @@ db.exec(`
 
 // Migrations
 try {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS collector_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      level TEXT NOT NULL,
+      message TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+} catch (_) {}
+
+try {
   db.exec('ALTER TABLE weather_history ADD COLUMN soil_temp REAL');
 } catch (_) {}
 
@@ -68,10 +79,10 @@ try {
   const insert = db.prepare(
     'INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)'
   );
-  insert.run('lat', process.env.LAT || '');
-  insert.run('long', process.env.LONG || '');
+  insert.run('lat', '');
+  insert.run('long', '');
   insert.run('lawn_sqft', '');
-  insert.run('vc_api_key', process.env.VISUAL_CROSSING_API_KEY || '');
+  insert.run('vc_api_key', '');
   // Nutrient targets for the year
   insert.run('n_target', '');
   insert.run('p_target', '');

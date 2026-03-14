@@ -1,5 +1,73 @@
 import { useEffect, useState } from 'react'
 
+const NUTRIENT_COLORS = { N: '#2d7a27', P: '#d97706', K: '#2563eb', Fe: '#9a3412', S: '#ca8a04' }
+
+const R = 40
+const ARC_LEN = Math.PI * R
+const ARC_PATH = `M 10 50 A ${R} ${R} 0 0 1 90 50`
+
+// Point on the arc at fraction t (0=left, 1=right)
+function arcPoint(t) {
+  const theta = Math.PI * (1 - t)
+  return [50 + R * Math.cos(theta), 50 - R * Math.sin(theta)]
+}
+
+function ArcBase({ color, pct, children, viewH = 54 }) {
+  const fill = (pct / 100) * ARC_LEN
+  return (
+    <svg viewBox={`0 0 100 ${viewH}`} style={{ width: '100%', display: 'block' }}>
+      <path d={ARC_PATH} fill="none" stroke="#e5e7eb" strokeWidth="9" strokeLinecap="round" />
+      <path d={ARC_PATH} fill="none" stroke={color} strokeWidth="9" strokeLinecap="round"
+        className="ng-arc-fill"
+        strokeDasharray={ARC_LEN}
+        strokeDashoffset={ARC_LEN - fill} />
+      {children}
+    </svg>
+  )
+}
+
+function ArcLabel({ label, symbol, valText }) {
+  return (
+    <div style={{ textAlign: 'center', padding: '2px 8px 10px' }}>
+      <div style={{ fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#4b5563' }}>
+        {label} ({symbol})
+      </div>
+      <div style={{ fontSize: '0.7rem', color: '#9ca3af' }}>{valText}</div>
+    </div>
+  )
+}
+
+function NutrientGaugeCard({ label, symbol, total, target }) {
+  const pct = Math.min((total / target) * 100, 100)
+  const statusColor = pct < 40 ? '#ef4444' : pct < 72 ? '#f59e0b' : '#16a34a'
+  const statusLabel = pct < 40 ? 'LOW' : pct < 72 ? 'ON TRACK' : 'GREAT'
+  const [tipX, tipY] = arcPoint(pct / 100)
+  const valText = `${total.toFixed(1)} / ${target} lbs`
+
+  return (
+    <div className="ng-card">
+      <ArcBase color={statusColor} pct={pct} viewH={58}>
+        {pct > 2 && (
+          <>
+            <circle cx={tipX} cy={tipY} r="7" fill={statusColor} opacity="0.2" />
+            <circle cx={tipX} cy={tipY} r="4.5" fill={statusColor} />
+            <circle cx={tipX} cy={tipY} r="2" fill="white" />
+          </>
+        )}
+        <text x="50" y="43" textAnchor="middle" fill={statusColor}
+          style={{ fontSize: '14px', fontWeight: '800', fontFamily: 'inherit' }}>
+          {Math.round(pct)}%
+        </text>
+        <text x="50" y="54" textAnchor="middle" fill={statusColor}
+          style={{ fontSize: '6.5px', fontWeight: '700', letterSpacing: '0.06em', fontFamily: 'inherit' }}>
+          {statusLabel}
+        </text>
+      </ArcBase>
+      <ArcLabel label={label} symbol={symbol} valText={valText} />
+    </div>
+  )
+}
+
 function todayString() {
   const d = new Date()
   const year = d.getFullYear()
@@ -143,89 +211,24 @@ export default function WorkLog() {
           {(() => {
             const { n_total, p_total, k_total, fe_total, s_total } = getYearlyTotals()
             const hasTargets = targets.n_target || targets.p_target || targets.k_target || targets.fe_target || targets.s_target
-            const hasData = n_total || p_total || k_total || fe_total || s_total
 
-            if (!hasData && !hasTargets) {
+            if (!hasTargets) {
               return <div className="empty-state">Set nutrient targets in settings and log work to see progress.</div>
             }
 
+            const nutrients = [
+              targets.n_target && { label: 'Nitrogen',   symbol: 'N',  total: n_total,  target: targets.n_target },
+              targets.p_target && { label: 'Phosphorus', symbol: 'P',  total: p_total,  target: targets.p_target },
+              targets.k_target && { label: 'Potassium',  symbol: 'K',  total: k_total,  target: targets.k_target },
+              targets.fe_target && { label: 'Iron',      symbol: 'Fe', total: fe_total, target: targets.fe_target },
+              targets.s_target && { label: 'Sulfur',     symbol: 'S',  total: s_total,  target: targets.s_target },
+            ].filter(Boolean)
+
             return (
               <div className="nutrient-gauges">
-                {targets.n_target && (
-                  <div className="nutrient-gauge">
-                    <div className="gauge-label">Nitrogen (N)</div>
-                    <div className="gauge-container">
-                      <div className="gauge-bar">
-                        <div
-                          className="gauge-fill"
-                          style={{ width: `${Math.min((n_total / targets.n_target) * 100, 100)}%` }}
-                        ></div>
-                      </div>
-                      <div className="gauge-value">{n_total.toFixed(1)} / {targets.n_target} lbs</div>
-                      <div className="gauge-percent">{((n_total / targets.n_target) * 100).toFixed(0)}%</div>
-                    </div>
-                  </div>
-                )}
-                {targets.p_target && (
-                  <div className="nutrient-gauge">
-                    <div className="gauge-label">Phosphorus (P)</div>
-                    <div className="gauge-container">
-                      <div className="gauge-bar">
-                        <div
-                          className="gauge-fill"
-                          style={{ width: `${Math.min((p_total / targets.p_target) * 100, 100)}%` }}
-                        ></div>
-                      </div>
-                      <div className="gauge-value">{p_total.toFixed(1)} / {targets.p_target} lbs</div>
-                      <div className="gauge-percent">{((p_total / targets.p_target) * 100).toFixed(0)}%</div>
-                    </div>
-                  </div>
-                )}
-                {targets.k_target && (
-                  <div className="nutrient-gauge">
-                    <div className="gauge-label">Potassium (K)</div>
-                    <div className="gauge-container">
-                      <div className="gauge-bar">
-                        <div
-                          className="gauge-fill"
-                          style={{ width: `${Math.min((k_total / targets.k_target) * 100, 100)}%` }}
-                        ></div>
-                      </div>
-                      <div className="gauge-value">{k_total.toFixed(1)} / {targets.k_target} lbs</div>
-                      <div className="gauge-percent">{((k_total / targets.k_target) * 100).toFixed(0)}%</div>
-                    </div>
-                  </div>
-                )}
-                {targets.fe_target && (
-                  <div className="nutrient-gauge">
-                    <div className="gauge-label">Iron (Fe)</div>
-                    <div className="gauge-container">
-                      <div className="gauge-bar">
-                        <div
-                          className="gauge-fill"
-                          style={{ width: `${Math.min((fe_total / targets.fe_target) * 100, 100)}%` }}
-                        ></div>
-                      </div>
-                      <div className="gauge-value">{fe_total.toFixed(1)} / {targets.fe_target} lbs</div>
-                      <div className="gauge-percent">{((fe_total / targets.fe_target) * 100).toFixed(0)}%</div>
-                    </div>
-                  </div>
-                )}
-                {targets.s_target && (
-                  <div className="nutrient-gauge">
-                    <div className="gauge-label">Sulfur (S)</div>
-                    <div className="gauge-container">
-                      <div className="gauge-bar">
-                        <div
-                          className="gauge-fill"
-                          style={{ width: `${Math.min((s_total / targets.s_target) * 100, 100)}%` }}
-                        ></div>
-                      </div>
-                      <div className="gauge-value">{s_total.toFixed(1)} / {targets.s_target} lbs</div>
-                      <div className="gauge-percent">{((s_total / targets.s_target) * 100).toFixed(0)}%</div>
-                    </div>
-                  </div>
-                )}
+                {nutrients.map(n => (
+                  <NutrientGaugeCard key={n.symbol} {...n} />
+                ))}
               </div>
             )
           })()}

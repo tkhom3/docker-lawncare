@@ -5,6 +5,7 @@ const path = require('path');
 const weatherRouter = require('./routes/weather');
 const worklogRouter = require('./routes/worklog');
 const settingsRouter = require('./routes/settings');
+const statusRouter = require('./routes/status');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -19,6 +20,7 @@ app.use(express.static(path.join(__dirname, '../public')));
 app.use('/api/weather', weatherRouter);
 app.use('/api/worklog', worklogRouter);
 app.use('/api/settings', settingsRouter);
+app.use('/api/status', statusRouter);
 
 // Catch-all: serve React's index.html for client-side routing
 app.get('/*path', (req, res) => {

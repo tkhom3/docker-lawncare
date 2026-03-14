@@ -50,12 +50,10 @@ router.put('/', (req, res) => {
       try { fs.writeFileSync(TRIGGER_FILE, Date.now().toString()); } catch (_) {}
     }
 
-    res.json(Object.fromEntries(
-      rows.map(r => [
-        r.key,
-        r.key === 'vc_api_key' && r.value ? '••••••••' : r.value
-      ])
-    ));
+    const settings = Object.fromEntries(
+      rows.map(r => [r.key, r.key === 'vc_api_key' && r.value ? '••••••••' : r.value])
+    );
+    res.json({ ...settings, backfillTriggered: apiKeyUpdated });
   } catch (err) {
     console.error('Error saving settings:', err);
     res.status(500).json({ error: 'Failed to save settings' });
