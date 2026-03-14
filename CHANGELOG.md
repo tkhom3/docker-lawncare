@@ -1,3 +1,9 @@
+## [1.0.6](https://github.com/tkhom3/docker-lawncare/compare/v1.0.5...v1.0.6) (2026-03-14)
+
+### 🐛 Bug Fixes
+
+* display predictions page when no data ([bd4ab9a](https://github.com/tkhom3/docker-lawncare/commit/bd4ab9acdee8c4309eb986dda28daf7daeb25679))
+
 ## [1.0.5](https://github.com/tkhom3/docker-lawncare/compare/v1.0.4...v1.0.5) (2026-03-14)
 
 ### 🐛 Bug Fixes
