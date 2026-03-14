@@ -5,6 +5,7 @@ import DollarSpotChart from './components/DollarSpotChart'
 import GrowthPotentialChart from './components/GrowthPotentialChart'
 import Predictions from './components/Predictions'
 import Settings from './components/Settings'
+import ErrorBoundary from './components/ErrorBoundary'
 import './index.css'
 
 export default function App() {
@@ -48,11 +49,13 @@ export default function App() {
           Settings
         </button>
       </div>
-      {activeTab === 'weather' && <><WeatherChart /><GrowthPotentialChart /></>}
-      {activeTab === 'predictions' && <Predictions />}
-      {activeTab === 'dollarspot' && <DollarSpotChart />}
-      {activeTab === 'worklog' && <WorkLog />}
-      {activeTab === 'settings' && <Settings />}
+      <ErrorBoundary key={activeTab}>
+        {activeTab === 'weather' && <><WeatherChart /><GrowthPotentialChart /></>}
+        {activeTab === 'predictions' && <Predictions />}
+        {activeTab === 'dollarspot' && <DollarSpotChart />}
+        {activeTab === 'worklog' && <WorkLog />}
+        {activeTab === 'settings' && <Settings />}
+      </ErrorBoundary>
     </div>
   )
 }

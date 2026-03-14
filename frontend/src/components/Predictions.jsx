@@ -40,7 +40,9 @@ export default function Predictions() {
   }, [])
 
   if (loading) return <div className="loading">Loading predictions...</div>
-  if (!data) return <div className="empty-state">No data available.</div>
+  if (!data || !data.history || (!data.history.length && !data.forecast.length)) {
+    return <div className="empty-state">No weather data yet. The collector will populate data on its next run.</div>
+  }
 
   // Merge all series into one chart array
   const histDates = new Set(data.history.map(p => p.date))
