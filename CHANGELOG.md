@@ -1,3 +1,17 @@
+## [1.0.9](https://github.com/tkhom3/docker-lawncare/compare/v1.0.8...v1.0.9) (2026-03-14)
+
+### 🐛 Bug Fixes
+
+* bump better-sqlite3 from 11.10.0 to 12.8.0 in /backend ([ac34582](https://github.com/tkhom3/docker-lawncare/commit/ac3458248a42bced67087c6852d50282704d77fa))
+* bump recharts from 2.15.4 to 3.8.0 in /frontend ([d749f3f](https://github.com/tkhom3/docker-lawncare/commit/d749f3f880b3ec1d9f45594453721d4c88d46c2e))
+* lock files ([85c94fb](https://github.com/tkhom3/docker-lawncare/commit/85c94fb22096dc5daec0a353f8640dbd31929877))
+* regenerate root lockfile to sync workspace dependencies ([0105045](https://github.com/tkhom3/docker-lawncare/commit/01050458c9a46a9dd1508f1be5f3f855fff348d4))
+* trigger population of data ([bc6dd01](https://github.com/tkhom3/docker-lawncare/commit/bc6dd01734de277890278116b8398487661c017a))
+
+### 🔧 Chores
+
+* bump semantic-release from 24.2.9 to 25.0.3 ([2c9443a](https://github.com/tkhom3/docker-lawncare/commit/2c9443a0fe1d5e9673508772dc67f18a3b55fdbf))
+
 ## [1.0.8](https://github.com/tkhom3/docker-lawncare/compare/v1.0.7...v1.0.8) (2026-03-14)
 
 ### 🐛 Bug Fixes
