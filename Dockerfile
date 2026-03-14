@@ -26,10 +26,10 @@ ENV PYTHONUNBUFFERED=1
 
 RUN apt-get update && apt-get upgrade -y --no-install-recommends \
     && apt-get install -y --no-install-recommends \
-        python3 \
-        python3-pip \
-        supervisor \
-        gosu \
+    python3 \
+    python3-pip \
+    supervisor \
+    gosu \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv for Python dependency management
