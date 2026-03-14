@@ -6,5 +6,8 @@
     "start": "node src/index.js",
     "dev": "nodemon src/index.js"
   },
-  "private": true
+  "private": true,
+  "dependencies": {
+    "express-rate-limit": "^8.3.1"
+  }
 }
