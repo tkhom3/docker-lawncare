@@ -252,9 +252,11 @@ def fetch_forecast():
     )
 
     try:
-        logger.info('Fetching forecast...')
+        logger.info(f'Fetching forecast ({LAT},{LONG})...')
         resp = requests.get(url, timeout=30)
-        resp.raise_for_status()
+        if not resp.ok:
+            logger.error(f'Forecast HTTP {resp.status_code}: {resp.text[:200]}')
+            resp.raise_for_status()
         data = resp.json()
 
         values = data.get('location', {}).get('values', [])
