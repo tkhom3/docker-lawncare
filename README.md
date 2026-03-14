@@ -247,4 +247,5 @@ For complete deployment setup instructions, see [DEPLOY.md](DEPLOY.md).
 - **Complete deployment guide**: See [DEPLOY.md](DEPLOY.md) for Docker Hub setup and troubleshooting
 - **Version history**: Check [CHANGELOG.md](CHANGELOG.md) for all releases and changes
 - **GitHub Releases**: View releases at `/releases` on GitHub
+
 # Test\n
