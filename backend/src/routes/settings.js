@@ -1,6 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const fs = require('fs');
+const path = require('path');
+
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '../data');
+const TRIGGER_FILE = path.join(DATA_DIR, '.collect-trigger');
 
 // GET /api/settings
 router.get('/', (req, res) => {
@@ -38,6 +43,13 @@ router.put('/', (req, res) => {
     });
     updateMany(req.body);
     const rows = db.prepare('SELECT key, value FROM settings').all();
+
+    // If API key was just saved, signal the collector to run immediately
+    const apiKeyUpdated = req.body.vc_api_key && req.body.vc_api_key !== '••••••••';
+    if (apiKeyUpdated) {
+      try { fs.writeFileSync(TRIGGER_FILE, Date.now().toString()); } catch (_) {}
+    }
+
     res.json(Object.fromEntries(
       rows.map(r => [
         r.key,

@@ -307,12 +307,34 @@ def run_collection():
     logger.info('--- Collection complete ---')
 
 
+TRIGGER_FILE = os.path.join(DATA_DIR, '.collect-trigger')
+
+
+def wait_for_db(retries=10, delay=3):
+    """Wait for the app container to initialize the DB before starting."""
+    for attempt in range(1, retries + 1):
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            conn.execute("SELECT 1 FROM settings LIMIT 1")
+            conn.close()
+            return True
+        except Exception:
+            logger.info(f'Waiting for database... (attempt {attempt}/{retries})')
+            time.sleep(delay)
+    logger.error('Database not ready after maximum retries.')
+    return False
+
+
 if __name__ == '__main__':
     logger.info('Lawncare collector starting up.')
-    api_key, lat, long_ = get_settings()
     logger.info(f'Data directory: {DATA_DIR}')
+
+    if not wait_for_db():
+        sys.exit(1)
+
+    api_key, lat, long_ = get_settings()
     logger.info(f'Location: {lat}, {long_}')
-    logger.info(f'API key: {"set" if api_key else "NOT SET — data collection will be skipped"}')
+    logger.info(f'API key: {"set" if api_key else "NOT SET — set it in the Settings page"}')
 
     # Backfill from Jan 1 of current year on startup
     jan1 = datetime(datetime.now().year, 1, 1)
@@ -328,4 +350,13 @@ if __name__ == '__main__':
 
     while True:
         schedule.run_pending()
+        # Check for trigger file written by the app when settings are saved
+        if os.path.exists(TRIGGER_FILE):
+            try:
+                os.remove(TRIGGER_FILE)
+            except OSError:
+                pass
+            logger.info('Trigger file detected — running collection now.')
+            backfill_history(days=(datetime.now() - datetime(datetime.now().year, 1, 1)).days)
+            run_collection()
         time.sleep(60)
