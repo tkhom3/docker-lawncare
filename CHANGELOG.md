@@ -1,3 +1,9 @@
+## [1.0.11](https://github.com/tkhom3/docker-lawncare/compare/v1.0.10...v1.0.11) (2026-03-14)
+
+### ♻️ Refactoring
+
+* logging ([100a380](https://github.com/tkhom3/docker-lawncare/commit/100a3809d408371017163d7486a5b0880578e7f9))
+
 ## [1.0.10](https://github.com/tkhom3/docker-lawncare/compare/v1.0.9...v1.0.10) (2026-03-14)
 
 ### ♻️ Refactoring
