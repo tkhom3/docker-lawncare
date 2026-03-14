@@ -1,12 +1,18 @@
 FROM python:3.14-slim
+ENV PYTHONUNBUFFERED=1
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends su-exec \
+    && rm -rf /var/lib/apt/lists/*
 COPY collector/pyproject.toml ./
 RUN uv pip install --system .
 COPY collector/collector.py ./
+COPY entrypoint.collector.sh /entrypoint.sh
 
-# Create non-root user
-RUN useradd -m -u 10001 lawncare && chown -R lawncare:lawncare /app
-USER lawncare
+# Create non-root user and pre-create data dir
+RUN useradd -m -u 10001 lawncare \
+    && mkdir -p /app/data \
+    && chown -R lawncare:lawncare /app \
+    && chmod +x /entrypoint.sh
 
-CMD ["python", "collector.py"]
+ENTRYPOINT ["/entrypoint.sh"]

@@ -9,16 +9,21 @@ RUN npm run build
 
 # Stage 2: Build the Node/Express backend
 FROM node:22-bookworm-slim AS backend
-RUN apt-get update && apt-get upgrade -y --no-install-recommends && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get upgrade -y --no-install-recommends \
+    && apt-get install -y --no-install-recommends su-exec \
+    && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY backend/package*.json ./
 RUN npm ci
 COPY backend/src ./src
 COPY --from=frontend-build /app/frontend/dist ./public
+COPY entrypoint.sh /entrypoint.sh
 
-# Create non-root user
-RUN useradd -m -u 10001 lawncare && chown -R lawncare:lawncare /app
-USER lawncare
+# Create non-root user and pre-create data dir
+RUN useradd -m -u 10001 lawncare \
+    && mkdir -p /app/data \
+    && chown -R lawncare:lawncare /app \
+    && chmod +x /entrypoint.sh
 
 EXPOSE 3000
-CMD ["node", "src/index.js"]
+ENTRYPOINT ["/entrypoint.sh"]
