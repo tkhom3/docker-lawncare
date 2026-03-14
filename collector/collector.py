@@ -54,60 +54,10 @@ def write_log(level, message):
 
 
 def get_db():
-    """Open the SQLite database and ensure tables exist."""
-    os.makedirs(DATA_DIR, exist_ok=True)
+    """Open the SQLite database. Schema is managed exclusively by db.js (Node backend)."""
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute('PRAGMA journal_mode=WAL')
-    conn.executescript("""
-        CREATE TABLE IF NOT EXISTS weather_history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            date TEXT UNIQUE NOT NULL,
-            temp_avg REAL,
-            temp_high REAL,
-            temp_low REAL,
-            humidity REAL,
-            precip REAL,
-            source TEXT DEFAULT 'VC',
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS weather_forecast (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            date TEXT UNIQUE NOT NULL,
-            temp_high REAL,
-            temp_low REAL,
-            humidity REAL,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS work_log (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            date TEXT NOT NULL,
-            activity TEXT NOT NULL,
-            notes TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS collector_log (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            level TEXT NOT NULL,
-            message TEXT NOT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-    """)
-    conn.commit()
-    # Migrations
-    try:
-        conn.execute('ALTER TABLE weather_history ADD COLUMN soil_temp REAL')
-        conn.commit()
-    except sqlite3.OperationalError:
-        pass
-    try:
-        conn.execute('ALTER TABLE weather_forecast ADD COLUMN precip REAL')
-        conn.commit()
-    except sqlite3.OperationalError:
-        pass
     return conn
 
 
