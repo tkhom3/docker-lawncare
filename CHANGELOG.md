@@ -1,3 +1,13 @@
+## [1.4.0](https://github.com/tkhom3/docker-lawncare/compare/v1.3.0...v1.4.0) (2026-03-15)
+
+### ✨ Features
+
+* add db backup ([cbd1099](https://github.com/tkhom3/docker-lawncare/commit/cbd10999e6f2c49b1f8e577680397ff37338198c))
+
+### 🔧 Chores
+
+* install latest node in devcontainer ([6888d39](https://github.com/tkhom3/docker-lawncare/commit/6888d3988f75c0df5ccabc91d2b299bea1fb5c4b))
+
 ## [1.3.0](https://github.com/tkhom3/docker-lawncare/compare/v1.2.6...v1.3.0) (2026-03-15)
 
 ### ✨ Features
