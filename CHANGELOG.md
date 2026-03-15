@@ -1,3 +1,18 @@
+## [1.3.0](https://github.com/tkhom3/docker-lawncare/compare/v1.2.6...v1.3.0) (2026-03-15)
+
+### ✨ Features
+
+* add ratelimiting ([00be243](https://github.com/tkhom3/docker-lawncare/commit/00be24322cc52c9a124756188e27a2a21d4c7bc4))
+
+### 🐛 Bug Fixes
+
+* css formatting ([866a820](https://github.com/tkhom3/docker-lawncare/commit/866a820fb35a4ec2ffb9adc9f254b792273f859e))
+
+### 🔧 Chores
+
+* bump actions/upload-artifact from 4 to 7 ([4b8fbc5](https://github.com/tkhom3/docker-lawncare/commit/4b8fbc57083af998f218821fc8e2229e8140e4fa))
+* update deps ([4a1975a](https://github.com/tkhom3/docker-lawncare/commit/4a1975affdbb156bbb71d4f292e9e3e307144291))
+
 ## [1.2.6](https://github.com/tkhom3/docker-lawncare/compare/v1.2.5...v1.2.6) (2026-03-14)
 
 ### 🐛 Bug Fixes
