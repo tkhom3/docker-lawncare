@@ -7,7 +7,7 @@
     "ghcr.io/devcontainers/features/docker-in-docker:2": {},
     "ghcr.io/devcontainers-extra/features/uv:1": {}
   },
-  "postCreateCommand": "npm install --prefix backend && npm install --prefix frontend && cd collector && uv sync",
+  "postCreateCommand": "npm install -g npm@latest && npm install --prefix backend && npm install --prefix frontend && cd collector && uv sync",
   "forwardPorts": [3000, 5173],
   "portsAttributes": {
     "3000": { "label": "Backend / Production" },
