@@ -1,3 +1,9 @@
+## [1.4.1](https://github.com/tkhom3/docker-lawncare/compare/v1.4.0...v1.4.1) (2026-03-15)
+
+### 🐛 Bug Fixes
+
+* correct rate limiting ([2cb5de2](https://github.com/tkhom3/docker-lawncare/commit/2cb5de232f5e354d73836f0ff74618fedff48103))
+
 ## [1.4.0](https://github.com/tkhom3/docker-lawncare/compare/v1.3.0...v1.4.0) (2026-03-15)
 
 ### ✨ Features
