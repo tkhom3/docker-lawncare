@@ -63,6 +63,9 @@ Web dashboard for tracking lawn health, maintenance activities, and nutrient app
    - `LAWNCARE_DATA_PATH` — where to store persistent data (defaults to `./data`)
    - `VISUAL_CROSSING_API_KEY` — get free key at [visualcrossing.com](https://www.visualcrossing.com/)
    - `LAT` / `LONG` — latitude and longitude of your location
+   - `BACKUP_DAY` — day of week for automatic backups (default: `sunday`)
+   - `BACKUP_TIME` — time of day for backups in 24-hour `HH:MM` format (default: `00:00`)
+   - `BACKUP_KEEP` — number of recent backups to retain (default: `4`)
 
 3. Start the app:
 
@@ -124,6 +127,18 @@ All application data (database, settings, work logs) is stored in the directory 
 - Host path: Configurable via `LAWNCARE_DATA_PATH` environment variable
 
 Data survives container restarts and updates as long as you map the volume correctly.
+
+## Automatic Backups
+
+The app automatically backs up the SQLite database on a weekly schedule. Backups are stored in a `backups/` subdirectory within your data directory (e.g., `lawncare_2025-01-05_00-00-00.db`).
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `BACKUP_DAY` | `sunday` | Day of week to run backup (`sunday`–`saturday`, or `0`–`6`) |
+| `BACKUP_TIME` | `00:00` | Time of day in 24-hour `HH:MM` format |
+| `BACKUP_KEEP` | `4` | Number of most recent backups to keep (older ones are deleted) |
+
+To restore from a backup, stop the container, replace `lawncare.db` in your data directory with a backup file, then restart.
 
 ## Recommended Nutrient Targets (Cool Season Grass - Midwest)
 
