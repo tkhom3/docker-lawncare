@@ -19,6 +19,9 @@ app.use(express.json());
 const apiLimiter = rateLimit({ windowMs: 60 * 1000, limit: 200 });
 app.use('/api/', apiLimiter);
 
+// Optional: separate rate limiter for frontend (non-API) routes
+const frontendLimiter = rateLimit({ windowMs: 60 * 1000, limit: 200 });
+
 // Serve static React build
 app.use(express.static(path.join(__dirname, '../public')));
 
@@ -30,7 +33,7 @@ app.use('/api/settings', settingsRouter);
 app.use('/api/status', statusRouter);
 
 // Catch-all: serve React's index.html for client-side routing
-app.get('/*path', (req, res) => {
+app.get('/*path', frontendLimiter, (req, res) => {
   res.sendFile(path.join(__dirname, '../public', 'index.html'));
 });
 
