@@ -8,6 +8,9 @@ services:
       - "3000:3000"
     environment:
       - DATA_DIR=/app/data
+      - BACKUP_DAY=${BACKUP_DAY:-sunday}
+      - BACKUP_TIME=${BACKUP_TIME:-00:00}
+      - BACKUP_KEEP=${BACKUP_KEEP:-4}
     volumes:
       - ${LAWNCARE_DATA_PATH:-./data}:/app/data
     restart: unless-stopped

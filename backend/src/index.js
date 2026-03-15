@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
+const { scheduleBackups } = require('./backup');
 
 const weatherRouter = require('./routes/weather');
 const worklogRouter = require('./routes/worklog');
@@ -36,6 +37,8 @@ app.use('/api/status', statusRouter);
 app.get('/*path', frontendLimiter, (req, res) => {
   res.sendFile(path.join(__dirname, '../public', 'index.html'));
 });
+
+scheduleBackups();
 
 app.listen(PORT, () => {
   console.log(`Lawncare server running on port ${PORT}`);

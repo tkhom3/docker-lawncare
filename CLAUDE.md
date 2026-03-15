@@ -98,5 +98,12 @@ Only infrastructure variables are used — user configuration lives in the DB.
 | `DATA_DIR` | backend + collector | Path to data directory (default `/app/data`) |
 | `PORT` | backend | Express port (default `3000`) |
 | `PUID` / `PGID` | entrypoint.sh | Map container user to host UID/GID |
+| `BACKUP_DAY` | backend (`backup.js`) | Day of week for weekly backup (default `sunday`) |
+| `BACKUP_TIME` | backend (`backup.js`) | Time of day for backup in `HH:MM` 24-hour format (default `00:00`) |
+| `BACKUP_KEEP` | backend (`backup.js`) | Number of recent backups to retain (default `4`) |
 
 `VISUAL_CROSSING_API_KEY`, `LAT`, `LONG` are **not read from environment**. Set them in the Settings tab.
+
+## Database Backups
+
+`backend/src/backup.js` runs a weekly hot-backup using `better-sqlite3`'s `db.backup()` API. Backup files are written to `{DATA_DIR}/backups/lawncare_YYYY-MM-DD_HH-MM-SS.db`. Old backups beyond `BACKUP_KEEP` are pruned automatically. The schedule is driven by `setTimeout` (self-rescheduling after each run), not `setInterval`.
