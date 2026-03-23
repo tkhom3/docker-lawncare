@@ -95,7 +95,10 @@ router.post('/', (req, res) => {
 
 // PUT /api/planned-work/:id — update a planned work entry (only if not completed)
 router.put('/:id', (req, res) => {
-  const { id } = req.params;
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: 'Invalid id' });
+  }
   const {
     planned_date,
     activity,
@@ -160,7 +163,10 @@ router.put('/:id', (req, res) => {
 
 // PATCH /api/planned-work/:id/complete — toggle completed, syncing work_log
 router.patch('/:id/complete', (req, res) => {
-  const { id } = req.params;
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: 'Invalid id' });
+  }
   try {
     const entry = db.prepare('SELECT * FROM planned_work WHERE id = ?').get(id);
     if (!entry) return res.status(404).json({ error: 'Entry not found' });
@@ -208,7 +214,10 @@ router.patch('/:id/complete', (req, res) => {
 
 // DELETE /api/planned-work/:id
 router.delete('/:id', (req, res) => {
-  const { id } = req.params;
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: 'Invalid id' });
+  }
   try {
     const result = db.prepare('DELETE FROM planned_work WHERE id = ?').run(id);
     if (result.changes === 0) return res.status(404).json({ error: 'Entry not found' });

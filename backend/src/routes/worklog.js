@@ -105,7 +105,10 @@ router.post('/', (req, res) => {
 
 // DELETE /api/worklog/:id
 router.delete('/:id', (req, res) => {
-  const { id } = req.params;
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: 'Invalid id' });
+  }
   try {
     db.transaction(() => {
       // If a planned_work entry was completed into this work_log row, unlink it

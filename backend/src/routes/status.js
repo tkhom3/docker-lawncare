@@ -14,7 +14,7 @@ router.get('/position', (req, res) => {
 
 // GET /api/status/stream?since_id=<id> — SSE stream of collector log entries
 router.get('/stream', (req, res) => {
-  const sinceId = parseInt(req.query.since_id || '0', 10);
+  const sinceId = Math.max(0, parseInt(req.query.since_id, 10) || 0);
 
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');

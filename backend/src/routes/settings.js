@@ -27,6 +27,21 @@ router.get('/', (req, res) => {
 // PUT /api/settings
 router.put('/', (req, res) => {
   try {
+    // Validate lat/long if provided
+    const { lat, long: lng } = req.body;
+    if (lat !== undefined && lat !== '') {
+      const latNum = parseFloat(lat);
+      if (isNaN(latNum) || latNum < -90 || latNum > 90) {
+        return res.status(400).json({ error: 'lat must be a number between -90 and 90' });
+      }
+    }
+    if (lng !== undefined && lng !== '') {
+      const lngNum = parseFloat(lng);
+      if (isNaN(lngNum) || lngNum < -180 || lngNum > 180) {
+        return res.status(400).json({ error: 'long must be a number between -180 and 180' });
+      }
+    }
+
     // Allow updating these fields (vc_api_key excluded from UI edit)
     const allowed = ['lat', 'long', 'lawn_sqft', 'vc_api_key', 'n_target', 'p_target', 'k_target', 'fe_target', 's_target'];
     const upsert = db.prepare(
