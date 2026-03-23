@@ -45,34 +45,90 @@ function ArcLabel({ label, symbol, valText }) {
 }
 
 function NutrientGaugeCard({ label, symbol, total, target, adjusted, plannedTotal }) {
-  const pct = Math.min((total / target) * 100, 100)
-  const plannedPct = plannedTotal != null ? ((total + plannedTotal) / target) * 100 : null
-  const statusColor = pct < 40 ? '#ef4444' : pct < 72 ? '#f59e0b' : '#16a34a'
-  const statusLabel = pct < 40 ? 'LOW' : pct < 72 ? 'ON TRACK' : 'GREAT'
-  const [tipX, tipY] = arcPoint(pct / 100)
-  const valText = plannedTotal != null && plannedTotal > 0
-    ? `${total.toFixed(1)} + ${plannedTotal.toFixed(1)} planned / ${target.toFixed(1)} lbs`
-    : `${total.toFixed(1)} / ${target.toFixed(1)} lbs`
+  const rawPct    = (total / target) * 100
+  const rawCombo  = plannedTotal != null ? ((total + plannedTotal) / target) * 100 : null
+
+  const appliedOver = rawPct > 100
+  const comboOver   = rawCombo != null && rawCombo > 100
+
+  // Arc drawing — cap at 100 so we don't draw past the arc end
+  const arcPct     = Math.min(rawPct, 100)
+  const arcPlanned = rawCombo != null ? Math.min(rawCombo, 100) : null
+
+  const statusColor = appliedOver ? '#7c3aed'
+    : rawPct < 40 ? '#ef4444'
+    : rawPct < 72 ? '#f59e0b'
+    : '#16a34a'
+  const statusLabel = appliedOver ? 'OVER'
+    : rawPct < 40 ? 'LOW'
+    : rawPct < 72 ? 'ON TRACK'
+    : 'GREAT'
+
+  // Planned arc color — purple when combo will exceed target
+  const plannedColor = comboOver ? '#7c3aed' : statusColor
+
+  const [tipX, tipY] = arcPoint(arcPct / 100)
+
+  const excessApplied = appliedOver ? (total - target).toFixed(1) : null
+  const excessCombo   = comboOver && !appliedOver ? (total + plannedTotal - target).toFixed(1) : null
+
+  const valText = appliedOver
+    ? `${total.toFixed(1)} lbs (+${excessApplied} over)`
+    : plannedTotal != null && plannedTotal > 0
+      ? comboOver
+        ? `${total.toFixed(1)} + ${plannedTotal.toFixed(1)} planned (+${excessCombo} over)`
+        : `${total.toFixed(1)} + ${plannedTotal.toFixed(1)} planned / ${target.toFixed(1)} lbs`
+      : `${total.toFixed(1)} / ${target.toFixed(1)} lbs`
 
   return (
     <div className="ng-card">
-      <ArcBase color={statusColor} pct={pct} plannedPct={plannedPct} viewH={58}>
-        {pct > 2 && (
+      <svg viewBox="0 0 100 58" style={{ width: '100%', display: 'block' }}>
+        {/* Background arc */}
+        <path d={ARC_PATH} fill="none" stroke="#e5e7eb" strokeWidth="9" strokeLinecap="round" />
+
+        {/* Planned arc (faded) — shown when there's pending planned work */}
+        {arcPlanned != null && arcPlanned > arcPct && (
+          <path d={ARC_PATH} fill="none" stroke={plannedColor} strokeWidth="9" strokeLinecap="round"
+            opacity="0.28"
+            strokeDasharray={ARC_LEN}
+            strokeDashoffset={ARC_LEN - (arcPlanned / 100) * ARC_LEN} />
+        )}
+
+        {/* Applied arc */}
+        <path d={ARC_PATH} fill="none" stroke={statusColor} strokeWidth="9" strokeLinecap="round"
+          className="ng-arc-fill"
+          strokeDasharray={ARC_LEN}
+          strokeDashoffset={ARC_LEN - (arcPct / 100) * ARC_LEN} />
+
+        {/* Overflow pulse ring at right end when over */}
+        {appliedOver && (
+          <>
+            <circle cx="90" cy="50" r="8" fill={statusColor} opacity="0.15" />
+            <circle cx="90" cy="50" r="5" fill={statusColor} opacity="0.4" />
+          </>
+        )}
+        {comboOver && !appliedOver && (
+          <circle cx="90" cy="50" r="6" fill={plannedColor} opacity="0.3" />
+        )}
+
+        {/* Applied tip marker */}
+        {arcPct > 2 && !appliedOver && (
           <>
             <circle cx={tipX} cy={tipY} r="7" fill={statusColor} opacity="0.2" />
             <circle cx={tipX} cy={tipY} r="4.5" fill={statusColor} />
             <circle cx={tipX} cy={tipY} r="2" fill="white" />
           </>
         )}
+
         <text x="50" y="43" textAnchor="middle" fill={statusColor}
           style={{ fontSize: '14px', fontWeight: '800', fontFamily: 'inherit' }}>
-          {Math.round(pct)}%
+          {Math.round(rawPct)}%
         </text>
         <text x="50" y="54" textAnchor="middle" fill={statusColor}
           style={{ fontSize: '6.5px', fontWeight: '700', letterSpacing: '0.06em', fontFamily: 'inherit' }}>
           {statusLabel}
         </text>
-      </ArcBase>
+      </svg>
       <ArcLabel label={label} symbol={symbol} valText={valText} />
       {adjusted && (
         <div style={{ fontSize: '0.65rem', color: '#6b7280', textAlign: 'center', paddingBottom: '6px' }}>
@@ -134,19 +190,6 @@ function todayString() {
   return `${year}-${month}-${day}`
 }
 
-const EMPTY_WORK_FORM = {
-  date: todayString(),
-  activity: '',
-  notes: '',
-  n_pct: '',
-  p_pct: '',
-  k_pct: '',
-  fe_pct: '',
-  s_pct: '',
-  lbs_applied: '',
-  spreader_setting: '',
-}
-
 const EMPTY_SOIL_FORM = {
   date: todayString(),
   notes: '',
@@ -169,14 +212,198 @@ const EMPTY_PLAN_FORM = {
   spreader_setting: '',
 }
 
+// ── Shared helpers ──────────────────────────────────────────────────────────
+
+function nutrientLbs(entry, lbsField) {
+  const lbs = entry[lbsField] ? parseFloat(entry[lbsField]) : 0
+  return {
+    n: entry.n_pct && lbs ? (entry.n_pct / 100) * lbs : null,
+    p: entry.p_pct && lbs ? (entry.p_pct / 100) * lbs : null,
+    k: entry.k_pct && lbs ? (entry.k_pct / 100) * lbs : null,
+    fe: entry.fe_pct && lbs ? (entry.fe_pct / 100) * lbs : null,
+    s: entry.s_pct && lbs ? (entry.s_pct / 100) * lbs : null,
+  }
+}
+
+function NutrientDots({ n, p, k, fe, s }) {
+  const items = [['N', n, '#2d7a27'], ['P', p, '#d97706'], ['K', k, '#2563eb'], ['Fe', fe, '#9a3412'], ['S', s, '#ca8a04']]
+  const active = items.filter(([, v]) => v != null)
+  if (!active.length) return null
+  return (
+    <span style={{ display: 'inline-flex', gap: '5px', flexWrap: 'wrap' }}>
+      {active.map(([label, val, color]) => (
+        <span key={label} style={{
+          fontSize: '0.7rem', fontWeight: 700, color: 'white',
+          background: color, borderRadius: '4px', padding: '1px 6px',
+        }}>{label} {val.toFixed(2)}</span>
+      ))}
+    </span>
+  )
+}
+
+// ── Work History Table ───────────────────────────────────────────────────────
+
+function HistoryTable({ entries, lawnSqft, onDelete }) {
+  return (
+    <div style={{ overflowX: 'auto' }}>
+      <table className="wl-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Product</th>
+            <th>lbs</th>
+            <th>N</th><th>P</th><th>K</th><th>Fe</th><th>S</th>
+            <th>Spreader</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {entries.map(entry => {
+            const lbs = entry.lbs_applied ? parseFloat(entry.lbs_applied) : null
+            const nuts = nutrientLbs(entry, 'lbs_applied')
+            return (
+              <tr key={entry.id}>
+                <td className="wl-td-date">{entry.date}</td>
+                <td>
+                  <div style={{ fontWeight: 600, color: '#2d5a27' }}>{entry.activity}</div>
+                  {entry.notes && <div style={{ fontSize: '0.78rem', color: '#6b7280', marginTop: '2px' }}>{entry.notes}</div>}
+                </td>
+                <td className="wl-td-num">{lbs ? lbs.toFixed(1) : '—'}</td>
+                {['n','p','k','fe','s'].map(key => (
+                  <td key={key} className="wl-td-num">
+                    {nuts[key] != null ? <span className="wl-nut-chip wl-nut-chip--{key}">{nuts[key].toFixed(2)}</span> : <span style={{ color: '#d1d5db' }}>—</span>}
+                  </td>
+                ))}
+                <td style={{ fontSize: '0.82rem', color: '#6b7280' }}>{entry.spreader_setting || '—'}</td>
+                <td><button className="delete-btn" onClick={() => onDelete(entry.id)}>Delete</button></td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+// ── Planned Work Table ───────────────────────────────────────────────────────
+
+function PlanTable({ entries, lawnSqft, editingId, editForm, setEditForm, submitting, onToggle, onCancelEdit, onEditSubmit, onEdit, onDelete }) {
+  const COL_COUNT = 11
+  return (
+    <div style={{ overflowX: 'auto' }}>
+      <table className="wl-table">
+        <thead>
+          <tr>
+            <th style={{ width: '32px' }}></th>
+            <th>Date</th>
+            <th>Product</th>
+            <th>lbs</th>
+            <th>N</th><th>P</th><th>K</th><th>Fe</th><th>S</th>
+            <th>Spreader</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {entries.map(entry => {
+            if (editingId === entry.id) {
+              return (
+                <tr key={entry.id} style={{ background: '#f0f9ff' }}>
+                  <td colSpan={COL_COUNT} style={{ padding: '14px 12px' }}>
+                    <form onSubmit={(e) => onEditSubmit(e, entry.id)}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px', marginBottom: '10px' }}>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label>Date</label>
+                          <input type="date" value={editForm.planned_date} onChange={e => setEditForm({ ...editForm, planned_date: e.target.value })} required />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0, gridColumn: 'span 2' }}>
+                          <label>Product</label>
+                          <input type="text" value={editForm.activity} onChange={e => setEditForm({ ...editForm, activity: e.target.value })} required />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label>N %</label>
+                          <input type="number" step="0.01" value={editForm.n_pct} onChange={e => setEditForm({ ...editForm, n_pct: e.target.value })} />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label>P %</label>
+                          <input type="number" step="0.01" value={editForm.p_pct} onChange={e => setEditForm({ ...editForm, p_pct: e.target.value })} />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label>K %</label>
+                          <input type="number" step="0.01" value={editForm.k_pct} onChange={e => setEditForm({ ...editForm, k_pct: e.target.value })} />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label>Fe %</label>
+                          <input type="number" step="0.01" value={editForm.fe_pct} onChange={e => setEditForm({ ...editForm, fe_pct: e.target.value })} />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label>S %</label>
+                          <input type="number" step="0.01" value={editForm.s_pct} onChange={e => setEditForm({ ...editForm, s_pct: e.target.value })} />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label>lbs Planned</label>
+                          <input type="number" step="0.1" value={editForm.lbs_planned} onChange={e => setEditForm({ ...editForm, lbs_planned: e.target.value })} />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label>Spreader</label>
+                          <input type="text" value={editForm.spreader_setting} onChange={e => setEditForm({ ...editForm, spreader_setting: e.target.value })} />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0, gridColumn: 'span 2' }}>
+                          <label>Notes</label>
+                          <input type="text" value={editForm.notes} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} />
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button type="submit" className="submit-btn" disabled={submitting}>{submitting ? 'Saving...' : 'Save'}</button>
+                        <button type="button" className="submit-btn secondary" onClick={onCancelEdit}>Cancel</button>
+                      </div>
+                    </form>
+                  </td>
+                </tr>
+              )
+            }
+
+            const lbs = entry.lbs_planned ? parseFloat(entry.lbs_planned) : null
+            const nuts = nutrientLbs(entry, 'lbs_planned')
+            return (
+              <tr key={entry.id}>
+                <td style={{ textAlign: 'center' }}>
+                  <input type="checkbox" checked={!!entry.completed} onChange={() => onToggle(entry.id)}
+                    style={{ width: '15px', height: '15px', cursor: 'pointer', accentColor: '#16a34a' }} />
+                </td>
+                <td className="wl-td-date">{entry.planned_date}</td>
+                <td>
+                  <div style={{ fontWeight: 600, color: '#2d5a27' }}>{entry.activity}</div>
+                  {entry.notes && <div style={{ fontSize: '0.78rem', color: '#6b7280', marginTop: '2px' }}>{entry.notes}</div>}
+                </td>
+                <td className="wl-td-num">{lbs ? lbs.toFixed(1) : '—'}</td>
+                {['n','p','k','fe','s'].map(key => (
+                  <td key={key} className="wl-td-num">
+                    {nuts[key] != null ? nuts[key].toFixed(2) : <span style={{ color: '#d1d5db' }}>—</span>}
+                  </td>
+                ))}
+                <td style={{ fontSize: '0.82rem', color: '#6b7280' }}>{entry.spreader_setting || '—'}</td>
+                <td>
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    <button className="submit-btn secondary" style={{ padding: '3px 8px', fontSize: '0.78rem' }} onClick={() => onEdit(entry)}>Edit</button>
+                    <button className="delete-btn" onClick={() => onDelete(entry.id)}>Delete</button>
+                  </div>
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 export default function WorkLog() {
   const [entries, setEntries] = useState([])
   const [soilTests, setSoilTests] = useState([])
   const [plannedWork, setPlannedWork] = useState([])
-  const [workForm, setWorkForm] = useState(EMPTY_WORK_FORM)
   const [soilForm, setSoilForm] = useState(EMPTY_SOIL_FORM)
   const [planForm, setPlanForm] = useState(EMPTY_PLAN_FORM)
-  const [activeTab, setActiveTab] = useState('work') // 'work' | 'plan' | 'soil'
+  const [activeTab, setActiveTab] = useState('plan') // 'plan' | 'soil'
   const [editingId, setEditingId] = useState(null)
   const [editForm, setEditForm] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -213,27 +440,6 @@ export default function WorkLog() {
       .catch(err => console.error('Error fetching data:', err))
       .finally(() => setLoading(false))
   }, [])
-
-  async function handleWorkSubmit(e) {
-    e.preventDefault()
-    if (!workForm.activity.trim()) return
-    setSubmitting(true)
-    try {
-      const res = await fetch('/api/worklog', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(workForm),
-      })
-      if (res.ok) {
-        setWorkForm({ ...EMPTY_WORK_FORM, date: todayString() })
-        setEntries(await fetch('/api/worklog').then(r => r.json()))
-      }
-    } catch (err) {
-      console.error('Error creating work log entry:', err)
-    } finally {
-      setSubmitting(false)
-    }
-  }
 
   async function handleSoilSubmit(e) {
     e.preventDefault()
@@ -279,7 +485,14 @@ export default function WorkLog() {
   async function handleDeleteWork(id) {
     try {
       const res = await fetch(`/api/worklog/${id}`, { method: 'DELETE' })
-      if (res.ok) setEntries(await fetch('/api/worklog').then(r => r.json()))
+      if (res.ok) {
+        const [worklog, planned] = await Promise.all([
+          fetch('/api/worklog').then(r => r.json()),
+          fetch('/api/planned-work').then(r => r.json()),
+        ])
+        setEntries(worklog)
+        setPlannedWork(planned)
+      }
     } catch (err) {
       console.error('Error deleting work log entry:', err)
     }
@@ -462,17 +675,9 @@ export default function WorkLog() {
         </div>
       )}
 
-      {/* Log form with tab switcher */}
+      {/* Add form */}
       <div className="card">
         <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
-          <button
-            type="button"
-            className={activeTab === 'work' ? 'submit-btn' : 'submit-btn secondary'}
-            style={{ flex: 1 }}
-            onClick={() => setActiveTab('work')}
-          >
-            Log Work
-          </button>
           <button
             type="button"
             className={activeTab === 'plan' ? 'submit-btn' : 'submit-btn secondary'}
@@ -491,134 +696,6 @@ export default function WorkLog() {
           </button>
         </div>
 
-        {activeTab === 'work' && (
-          <form onSubmit={handleWorkSubmit}>
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="date">Date</label>
-                <input
-                  id="date"
-                  type="date"
-                  value={workForm.date}
-                  onChange={(e) => setWorkForm({ ...workForm, date: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="activity">Activity</label>
-                <input
-                  id="activity"
-                  type="text"
-                  placeholder="e.g. Applied fertilizer"
-                  value={workForm.activity}
-                  onChange={(e) => setWorkForm({ ...workForm, activity: e.target.value })}
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="notes">Notes</label>
-              <textarea
-                id="notes"
-                placeholder="Optional notes..."
-                value={workForm.notes}
-                onChange={(e) => setWorkForm({ ...workForm, notes: e.target.value })}
-              />
-            </div>
-
-            <div className="form-section-header">Product Details</div>
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="n_pct">Nitrogen (N) %</label>
-                <input
-                  id="n_pct"
-                  type="number"
-                  step="0.01"
-                  placeholder="e.g. 46"
-                  value={workForm.n_pct}
-                  onChange={(e) => setWorkForm({ ...workForm, n_pct: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="p_pct">Phosphorus (P) %</label>
-                <input
-                  id="p_pct"
-                  type="number"
-                  step="0.01"
-                  placeholder="e.g. 0"
-                  value={workForm.p_pct}
-                  onChange={(e) => setWorkForm({ ...workForm, p_pct: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="k_pct">Potassium (K) %</label>
-                <input
-                  id="k_pct"
-                  type="number"
-                  step="0.01"
-                  placeholder="e.g. 0"
-                  value={workForm.k_pct}
-                  onChange={(e) => setWorkForm({ ...workForm, k_pct: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="fe_pct">Iron (Fe) %</label>
-                <input
-                  id="fe_pct"
-                  type="number"
-                  step="0.01"
-                  placeholder="e.g. 0"
-                  value={workForm.fe_pct}
-                  onChange={(e) => setWorkForm({ ...workForm, fe_pct: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="s_pct">Sulfur (S) %</label>
-                <input
-                  id="s_pct"
-                  type="number"
-                  step="0.01"
-                  placeholder="e.g. 0"
-                  value={workForm.s_pct}
-                  onChange={(e) => setWorkForm({ ...workForm, s_pct: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="lbs_applied">Pounds Applied</label>
-                <input
-                  id="lbs_applied"
-                  type="number"
-                  step="0.1"
-                  placeholder="e.g. 10.5"
-                  value={workForm.lbs_applied}
-                  onChange={(e) => setWorkForm({ ...workForm, lbs_applied: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="spreader_setting">Spreader Setting</label>
-                <input
-                  id="spreader_setting"
-                  type="text"
-                  placeholder="e.g. 18"
-                  value={workForm.spreader_setting}
-                  onChange={(e) => setWorkForm({ ...workForm, spreader_setting: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <button type="submit" className="submit-btn" disabled={submitting}>
-              {submitting ? 'Saving...' : 'Log Work'}
-            </button>
-          </form>
-        )}
-
         {activeTab === 'plan' && (
           <form onSubmit={handlePlanSubmit}>
             <div className="form-row">
@@ -633,11 +710,11 @@ export default function WorkLog() {
                 />
               </div>
               <div className="form-group">
-                <label htmlFor="plan_activity">Activity</label>
+                <label htmlFor="plan_activity">Product</label>
                 <input
                   id="plan_activity"
                   type="text"
-                  placeholder="e.g. Apply fall fertilizer"
+                  placeholder="e.g. Milorganite 6-4-0"
                   value={planForm.activity}
                   onChange={(e) => setPlanForm({ ...planForm, activity: e.target.value })}
                   required
@@ -838,167 +915,27 @@ export default function WorkLog() {
         )}
       </div>
 
-      {/* Planned work list */}
+      {/* Planned work */}
       {plannedWork.some(p => !p.completed) && (
         <div className="card">
           <h2>Planned Work</h2>
-          <div className="worklog-entries">
-            {plannedWork.filter(p => !p.completed).map((entry) => {
-              const lbs = entry.lbs_planned ? parseFloat(entry.lbs_planned) : null
-              const perThousandSqft = lbs && lawnSqft ? (lbs / (lawnSqft / 1000)) : null
-
-              if (editingId === entry.id) {
-                return (
-                  <div key={entry.id} className="worklog-entry">
-                    <form onSubmit={(e) => handleEditSubmit(e, entry.id)}>
-                      <div className="form-row">
-                        <div className="form-group">
-                          <label>Planned Date</label>
-                          <input type="date" value={editForm.planned_date}
-                            onChange={(e) => setEditForm({ ...editForm, planned_date: e.target.value })} required />
-                        </div>
-                        <div className="form-group">
-                          <label>Activity</label>
-                          <input type="text" value={editForm.activity}
-                            onChange={(e) => setEditForm({ ...editForm, activity: e.target.value })} required />
-                        </div>
-                      </div>
-                      <div className="form-group">
-                        <label>Notes</label>
-                        <textarea value={editForm.notes}
-                          onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} />
-                      </div>
-                      <div className="form-section-header">Product Details</div>
-                      <div className="form-row">
-                        <div className="form-group">
-                          <label>N %</label>
-                          <input type="number" step="0.01" value={editForm.n_pct}
-                            onChange={(e) => setEditForm({ ...editForm, n_pct: e.target.value })} />
-                        </div>
-                        <div className="form-group">
-                          <label>P %</label>
-                          <input type="number" step="0.01" value={editForm.p_pct}
-                            onChange={(e) => setEditForm({ ...editForm, p_pct: e.target.value })} />
-                        </div>
-                        <div className="form-group">
-                          <label>K %</label>
-                          <input type="number" step="0.01" value={editForm.k_pct}
-                            onChange={(e) => setEditForm({ ...editForm, k_pct: e.target.value })} />
-                        </div>
-                      </div>
-                      <div className="form-row">
-                        <div className="form-group">
-                          <label>Fe %</label>
-                          <input type="number" step="0.01" value={editForm.fe_pct}
-                            onChange={(e) => setEditForm({ ...editForm, fe_pct: e.target.value })} />
-                        </div>
-                        <div className="form-group">
-                          <label>S %</label>
-                          <input type="number" step="0.01" value={editForm.s_pct}
-                            onChange={(e) => setEditForm({ ...editForm, s_pct: e.target.value })} />
-                        </div>
-                        <div className="form-group">
-                          <label>Pounds Planned</label>
-                          <input type="number" step="0.1" value={editForm.lbs_planned}
-                            onChange={(e) => setEditForm({ ...editForm, lbs_planned: e.target.value })} />
-                        </div>
-                      </div>
-                      <div className="form-row">
-                        <div className="form-group">
-                          <label>Spreader Setting</label>
-                          <input type="text" value={editForm.spreader_setting}
-                            onChange={(e) => setEditForm({ ...editForm, spreader_setting: e.target.value })} />
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <button type="submit" className="submit-btn" disabled={submitting}>
-                          {submitting ? 'Saving...' : 'Save'}
-                        </button>
-                        <button type="button" className="submit-btn secondary" onClick={cancelEdit}>
-                          Cancel
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                )
-              }
-
-              return (
-                <div key={entry.id} className="worklog-entry" style={{ opacity: entry.completed ? 0.55 : 1 }}>
-                  <div className="entry-header">
-                    <div className="entry-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <input
-                        type="checkbox"
-                        checked={!!entry.completed}
-                        onChange={() => handleToggleComplete(entry.id)}
-                        style={{ width: '17px', height: '17px', cursor: 'pointer', accentColor: '#16a34a', flexShrink: 0 }}
-                        title={entry.completed ? 'Mark as not done' : 'Mark as done'}
-                      />
-                      <span className="entry-date" style={{ textDecoration: entry.completed ? 'line-through' : 'none' }}>
-                        {entry.planned_date}
-                      </span>
-                      <span className="entry-activity" style={{ textDecoration: entry.completed ? 'line-through' : 'none' }}>
-                        {entry.activity}
-                      </span>
-                      {entry.completed && (
-                        <span style={{ fontSize: '0.7rem', color: '#16a34a', fontWeight: 600, background: '#dcfce7', padding: '2px 7px', borderRadius: '10px' }}>
-                          Done
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ display: 'flex', gap: '6px' }}>
-                      {!entry.completed && (
-                        <button className="submit-btn secondary" style={{ padding: '4px 10px', fontSize: '0.8rem' }}
-                          onClick={() => startEdit(entry)}>
-                          Edit
-                        </button>
-                      )}
-                      <button
-                        className="delete-btn"
-                        onClick={() => handleDeletePlan(entry.id)}
-                        title="Delete planned entry"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-
-                  {entry.notes && <div className="entry-notes"><strong>Notes:</strong> {entry.notes}</div>}
-
-                  {entry.spreader_setting && (
-                    <div className="entry-field">
-                      <strong>Spreader Setting:</strong> {entry.spreader_setting}
-                    </div>
-                  )}
-
-                  {lbs && (
-                    <div className="entry-field">
-                      <strong>Pounds Planned:</strong> {lbs.toFixed(2)} lbs
-                      {perThousandSqft && (
-                        <span className="secondary"> ({perThousandSqft.toFixed(2)} lbs per 1000 sqft)</span>
-                      )}
-                    </div>
-                  )}
-
-                  {lbs && (entry.n_pct || entry.p_pct || entry.k_pct || entry.fe_pct || entry.s_pct) && (
-                    <div className="entry-nutrients">
-                      <div className="nutrient-row">
-                        {entry.n_pct ? <div className="nutrient"><span className="nutrient-label">N:</span><span className="nutrient-value">{((entry.n_pct / 100) * lbs).toFixed(2)} lbs</span></div> : null}
-                        {entry.p_pct ? <div className="nutrient"><span className="nutrient-label">P:</span><span className="nutrient-value">{((entry.p_pct / 100) * lbs).toFixed(2)} lbs</span></div> : null}
-                        {entry.k_pct ? <div className="nutrient"><span className="nutrient-label">K:</span><span className="nutrient-value">{((entry.k_pct / 100) * lbs).toFixed(2)} lbs</span></div> : null}
-                        {entry.fe_pct ? <div className="nutrient"><span className="nutrient-label">Fe:</span><span className="nutrient-value">{((entry.fe_pct / 100) * lbs).toFixed(2)} lbs</span></div> : null}
-                        {entry.s_pct ? <div className="nutrient"><span className="nutrient-label">S:</span><span className="nutrient-value">{((entry.s_pct / 100) * lbs).toFixed(2)} lbs</span></div> : null}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
+          <PlanTable
+            entries={plannedWork.filter(p => !p.completed)}
+            lawnSqft={lawnSqft}
+            editingId={editingId}
+            editForm={editForm}
+            setEditForm={setEditForm}
+            submitting={submitting}
+            onToggle={handleToggleComplete}
+            onEdit={startEdit}
+            onCancelEdit={cancelEdit}
+            onEditSubmit={handleEditSubmit}
+            onDelete={handleDeletePlan}
+          />
         </div>
       )}
 
-      {/* Work log entries */}
+      {/* Work history */}
       <div className="card">
         <h2>Work History</h2>
         {loading ? (
@@ -1006,102 +943,7 @@ export default function WorkLog() {
         ) : entries.length === 0 ? (
           <div className="empty-state">No work logged yet.</div>
         ) : (
-          <div className="worklog-entries">
-            {entries.map((entry) => {
-              const lbs = entry.lbs_applied ? parseFloat(entry.lbs_applied) : null
-              const perThousandSqft = lbs && lawnSqft ? (lbs / (lawnSqft / 1000)) : null
-              const n_total = entry.n_pct && lbs ? (entry.n_pct / 100) * lbs : null
-              const p_total = entry.p_pct && lbs ? (entry.p_pct / 100) * lbs : null
-              const k_total = entry.k_pct && lbs ? (entry.k_pct / 100) * lbs : null
-              const fe_total = entry.fe_pct && lbs ? (entry.fe_pct / 100) * lbs : null
-              const s_total = entry.s_pct && lbs ? (entry.s_pct / 100) * lbs : null
-
-              const n_per_k = n_total && lawnSqft ? n_total / (lawnSqft / 1000) : null
-              const p_per_k = p_total && lawnSqft ? p_total / (lawnSqft / 1000) : null
-              const k_per_k = k_total && lawnSqft ? k_total / (lawnSqft / 1000) : null
-              const fe_per_k = fe_total && lawnSqft ? fe_total / (lawnSqft / 1000) : null
-              const s_per_k = s_total && lawnSqft ? s_total / (lawnSqft / 1000) : null
-
-              return (
-                <div key={entry.id} className="worklog-entry">
-                  <div className="entry-header">
-                    <div className="entry-title">
-                      <span className="entry-date">{entry.date}</span>
-                      <span className="entry-activity">{entry.activity}</span>
-                    </div>
-                    <button
-                      className="delete-btn"
-                      onClick={() => handleDeleteWork(entry.id)}
-                      title="Delete entry"
-                    >
-                      Delete
-                    </button>
-                  </div>
-
-                  {entry.notes && <div className="entry-notes"><strong>Notes:</strong> {entry.notes}</div>}
-
-                  {entry.spreader_setting && (
-                    <div className="entry-field">
-                      <strong>Spreader Setting:</strong> {entry.spreader_setting}
-                    </div>
-                  )}
-
-                  {entry.lbs_applied && (
-                    <div className="entry-field">
-                      <strong>Pounds Applied:</strong> {parseFloat(entry.lbs_applied).toFixed(2)} lbs
-                      {perThousandSqft && lawnSqft && (
-                        <span className="secondary"> ({perThousandSqft.toFixed(2)} lbs per 1000 sqft)</span>
-                      )}
-                    </div>
-                  )}
-
-                  {(n_total || p_total || k_total || fe_total || s_total) && (
-                    <div className="entry-nutrients">
-                      <div className="nutrient-row">
-                        {n_total !== null && (
-                          <div className="nutrient">
-                            <span className="nutrient-label">N (Total):</span>
-                            <span className="nutrient-value">{n_total.toFixed(2)} lbs</span>
-                            {n_per_k !== null && <span className="nutrient-per-k">{n_per_k.toFixed(2)} lbs/1K sqft</span>}
-                          </div>
-                        )}
-                        {p_total !== null && (
-                          <div className="nutrient">
-                            <span className="nutrient-label">P (Total):</span>
-                            <span className="nutrient-value">{p_total.toFixed(2)} lbs</span>
-                            {p_per_k !== null && <span className="nutrient-per-k">{p_per_k.toFixed(2)} lbs/1K sqft</span>}
-                          </div>
-                        )}
-                        {k_total !== null && (
-                          <div className="nutrient">
-                            <span className="nutrient-label">K (Total):</span>
-                            <span className="nutrient-value">{k_total.toFixed(2)} lbs</span>
-                            {k_per_k !== null && <span className="nutrient-per-k">{k_per_k.toFixed(2)} lbs/1K sqft</span>}
-                          </div>
-                        )}
-                      </div>
-                      <div className="nutrient-row">
-                        {fe_total !== null && (
-                          <div className="nutrient">
-                            <span className="nutrient-label">Fe (Total):</span>
-                            <span className="nutrient-value">{fe_total.toFixed(2)} lbs</span>
-                            {fe_per_k !== null && <span className="nutrient-per-k">{fe_per_k.toFixed(2)} lbs/1K sqft</span>}
-                          </div>
-                        )}
-                        {s_total !== null && (
-                          <div className="nutrient">
-                            <span className="nutrient-label">S (Total):</span>
-                            <span className="nutrient-value">{s_total.toFixed(2)} lbs</span>
-                            {s_per_k !== null && <span className="nutrient-per-k">{s_per_k.toFixed(2)} lbs/1K sqft</span>}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
+          <HistoryTable entries={entries} lawnSqft={lawnSqft} onDelete={handleDeleteWork} />
         )}
       </div>
 
@@ -1109,45 +951,33 @@ export default function WorkLog() {
       {soilTests.length > 0 && (
         <div className="card">
           <h2>Soil Test History</h2>
-          <div className="worklog-entries">
-            {soilTests.map((test) => {
-              const fields = [
-                soilTestLabel('pH', test.ph, ''),
-                soilTestLabel('OM', test.om_pct, '%'),
-                soilTestLabel('P', test.p_ppm, ' ppm'),
-                soilTestLabel('K', test.k_ppm, ' ppm'),
-              ].filter(Boolean)
-
-              return (
-                <div key={test.id} className="worklog-entry">
-                  <div className="entry-header">
-                    <div className="entry-title">
-                      <span className="entry-date">{test.date}</span>
-                      <span className="entry-activity">Soil Test</span>
-                    </div>
-                    <button
-                      className="delete-btn"
-                      onClick={() => handleDeleteSoil(test.id)}
-                      title="Delete soil test"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                  {fields.length > 0 && (
-                    <div className="entry-nutrients">
-                      <div className="nutrient-row">
-                        {fields.map(f => (
-                          <div key={f} className="nutrient">
-                            <span className="nutrient-value">{f}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {test.notes && <div className="entry-notes"><strong>Notes:</strong> {test.notes}</div>}
-                </div>
-              )
-            })}
+          <div style={{ overflowX: 'auto' }}>
+            <table className="wl-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>pH</th>
+                  <th>OM (%)</th>
+                  <th>P (ppm)</th>
+                  <th>K (ppm)</th>
+                  <th>Notes</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {soilTests.map(test => (
+                  <tr key={test.id}>
+                    <td className="wl-td-date">{test.date}</td>
+                    <td className="wl-td-num">{test.ph ?? '—'}</td>
+                    <td className="wl-td-num">{test.om_pct ?? '—'}</td>
+                    <td className="wl-td-num">{test.p_ppm ?? '—'}</td>
+                    <td className="wl-td-num">{test.k_ppm ?? '—'}</td>
+                    <td style={{ fontSize: '0.82rem', color: '#6b7280' }}>{test.notes || '—'}</td>
+                    <td><button className="delete-btn" onClick={() => handleDeleteSoil(test.id)}>Delete</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

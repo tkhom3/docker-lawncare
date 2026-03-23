@@ -107,10 +107,13 @@ router.post('/', (req, res) => {
 router.delete('/:id', (req, res) => {
   const { id } = req.params;
   try {
-    const result = db.prepare('DELETE FROM work_log WHERE id = ?').run(id);
-    if (result.changes === 0) {
-      return res.status(404).json({ error: 'Entry not found' });
-    }
+    db.transaction(() => {
+      // If a planned_work entry was completed into this work_log row, unlink it
+      // so it returns to the plan list rather than orphaning the foreign key
+      db.prepare('UPDATE planned_work SET completed = 0, work_log_id = NULL WHERE work_log_id = ?').run(id);
+      db.prepare('DELETE FROM work_log WHERE id = ?').run(id);
+    })();
+
     res.json({ success: true });
   } catch (err) {
     console.error('Error deleting work log entry:', err);
