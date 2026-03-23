@@ -12,11 +12,18 @@ function arcPoint(t) {
   return [50 + R * Math.cos(theta), 50 - R * Math.sin(theta)]
 }
 
-function ArcBase({ color, pct, children, viewH = 54 }) {
+function ArcBase({ color, pct, plannedPct, children, viewH = 54 }) {
   const fill = (pct / 100) * ARC_LEN
+  const plannedFill = plannedPct != null ? (Math.min(plannedPct, 100) / 100) * ARC_LEN : null
   return (
     <svg viewBox={`0 0 100 ${viewH}`} style={{ width: '100%', display: 'block' }}>
       <path d={ARC_PATH} fill="none" stroke="#e5e7eb" strokeWidth="9" strokeLinecap="round" />
+      {plannedFill != null && plannedFill > fill && (
+        <path d={ARC_PATH} fill="none" stroke={color} strokeWidth="9" strokeLinecap="round"
+          opacity="0.28"
+          strokeDasharray={ARC_LEN}
+          strokeDashoffset={ARC_LEN - plannedFill} />
+      )}
       <path d={ARC_PATH} fill="none" stroke={color} strokeWidth="9" strokeLinecap="round"
         className="ng-arc-fill"
         strokeDasharray={ARC_LEN}
@@ -37,32 +44,91 @@ function ArcLabel({ label, symbol, valText }) {
   )
 }
 
-function NutrientGaugeCard({ label, symbol, total, target, adjusted }) {
-  const pct = Math.min((total / target) * 100, 100)
-  const statusColor = pct < 40 ? '#ef4444' : pct < 72 ? '#f59e0b' : '#16a34a'
-  const statusLabel = pct < 40 ? 'LOW' : pct < 72 ? 'ON TRACK' : 'GREAT'
-  const [tipX, tipY] = arcPoint(pct / 100)
-  const valText = `${total.toFixed(1)} / ${target.toFixed(1)} lbs`
+function NutrientGaugeCard({ label, symbol, total, target, adjusted, plannedTotal }) {
+  const rawPct    = (total / target) * 100
+  const rawCombo  = plannedTotal != null ? ((total + plannedTotal) / target) * 100 : null
+
+  const appliedOver = rawPct > 100
+  const comboOver   = rawCombo != null && rawCombo > 100
+
+  // Arc drawing — cap at 100 so we don't draw past the arc end
+  const arcPct     = Math.min(rawPct, 100)
+  const arcPlanned = rawCombo != null ? Math.min(rawCombo, 100) : null
+
+  const statusColor = appliedOver ? '#7c3aed'
+    : rawPct < 40 ? '#ef4444'
+    : rawPct < 72 ? '#f59e0b'
+    : '#16a34a'
+  const statusLabel = appliedOver ? 'OVER'
+    : rawPct < 40 ? 'LOW'
+    : rawPct < 72 ? 'ON TRACK'
+    : 'GREAT'
+
+  // Planned arc color — purple when combo will exceed target
+  const plannedColor = comboOver ? '#7c3aed' : statusColor
+
+  const [tipX, tipY] = arcPoint(arcPct / 100)
+
+  const excessApplied = appliedOver ? (total - target).toFixed(1) : null
+  const excessCombo   = comboOver && !appliedOver ? (total + plannedTotal - target).toFixed(1) : null
+
+  const valText = appliedOver
+    ? `${total.toFixed(1)} lbs (+${excessApplied} over)`
+    : plannedTotal != null && plannedTotal > 0
+      ? comboOver
+        ? `${total.toFixed(1)} + ${plannedTotal.toFixed(1)} planned (+${excessCombo} over)`
+        : `${total.toFixed(1)} + ${plannedTotal.toFixed(1)} planned / ${target.toFixed(1)} lbs`
+      : `${total.toFixed(1)} / ${target.toFixed(1)} lbs`
 
   return (
     <div className="ng-card">
-      <ArcBase color={statusColor} pct={pct} viewH={58}>
-        {pct > 2 && (
+      <svg viewBox="0 0 100 58" style={{ width: '100%', display: 'block' }}>
+        {/* Background arc */}
+        <path d={ARC_PATH} fill="none" stroke="#e5e7eb" strokeWidth="9" strokeLinecap="round" />
+
+        {/* Planned arc (faded) — shown when there's pending planned work */}
+        {arcPlanned != null && arcPlanned > arcPct && (
+          <path d={ARC_PATH} fill="none" stroke={plannedColor} strokeWidth="9" strokeLinecap="round"
+            opacity="0.28"
+            strokeDasharray={ARC_LEN}
+            strokeDashoffset={ARC_LEN - (arcPlanned / 100) * ARC_LEN} />
+        )}
+
+        {/* Applied arc */}
+        <path d={ARC_PATH} fill="none" stroke={statusColor} strokeWidth="9" strokeLinecap="round"
+          className="ng-arc-fill"
+          strokeDasharray={ARC_LEN}
+          strokeDashoffset={ARC_LEN - (arcPct / 100) * ARC_LEN} />
+
+        {/* Overflow pulse ring at right end when over */}
+        {appliedOver && (
+          <>
+            <circle cx="90" cy="50" r="8" fill={statusColor} opacity="0.15" />
+            <circle cx="90" cy="50" r="5" fill={statusColor} opacity="0.4" />
+          </>
+        )}
+        {comboOver && !appliedOver && (
+          <circle cx="90" cy="50" r="6" fill={plannedColor} opacity="0.3" />
+        )}
+
+        {/* Applied tip marker */}
+        {arcPct > 2 && !appliedOver && (
           <>
             <circle cx={tipX} cy={tipY} r="7" fill={statusColor} opacity="0.2" />
             <circle cx={tipX} cy={tipY} r="4.5" fill={statusColor} />
             <circle cx={tipX} cy={tipY} r="2" fill="white" />
           </>
         )}
+
         <text x="50" y="43" textAnchor="middle" fill={statusColor}
           style={{ fontSize: '14px', fontWeight: '800', fontFamily: 'inherit' }}>
-          {Math.round(pct)}%
+          {Math.round(rawPct)}%
         </text>
         <text x="50" y="54" textAnchor="middle" fill={statusColor}
           style={{ fontSize: '6.5px', fontWeight: '700', letterSpacing: '0.06em', fontFamily: 'inherit' }}>
           {statusLabel}
         </text>
-      </ArcBase>
+      </svg>
       <ArcLabel label={label} symbol={symbol} valText={valText} />
       {adjusted && (
         <div style={{ fontSize: '0.65rem', color: '#6b7280', textAlign: 'center', paddingBottom: '6px' }}>
@@ -124,19 +190,6 @@ function todayString() {
   return `${year}-${month}-${day}`
 }
 
-const EMPTY_WORK_FORM = {
-  date: todayString(),
-  activity: '',
-  notes: '',
-  n_pct: '',
-  p_pct: '',
-  k_pct: '',
-  fe_pct: '',
-  s_pct: '',
-  lbs_applied: '',
-  spreader_setting: '',
-}
-
 const EMPTY_SOIL_FORM = {
   date: todayString(),
   notes: '',
@@ -146,12 +199,213 @@ const EMPTY_SOIL_FORM = {
   k_ppm: '',
 }
 
+const EMPTY_PLAN_FORM = {
+  planned_date: todayString(),
+  activity: '',
+  notes: '',
+  n_pct: '',
+  p_pct: '',
+  k_pct: '',
+  fe_pct: '',
+  s_pct: '',
+  lbs_planned: '',
+  spreader_setting: '',
+}
+
+// ── Shared helpers ──────────────────────────────────────────────────────────
+
+function nutrientLbs(entry, lbsField) {
+  const lbs = entry[lbsField] ? parseFloat(entry[lbsField]) : 0
+  return {
+    n: entry.n_pct && lbs ? (entry.n_pct / 100) * lbs : null,
+    p: entry.p_pct && lbs ? (entry.p_pct / 100) * lbs : null,
+    k: entry.k_pct && lbs ? (entry.k_pct / 100) * lbs : null,
+    fe: entry.fe_pct && lbs ? (entry.fe_pct / 100) * lbs : null,
+    s: entry.s_pct && lbs ? (entry.s_pct / 100) * lbs : null,
+  }
+}
+
+function NutrientDots({ n, p, k, fe, s }) {
+  const items = [['N', n, '#2d7a27'], ['P', p, '#d97706'], ['K', k, '#2563eb'], ['Fe', fe, '#9a3412'], ['S', s, '#ca8a04']]
+  const active = items.filter(([, v]) => v != null)
+  if (!active.length) return null
+  return (
+    <span style={{ display: 'inline-flex', gap: '5px', flexWrap: 'wrap' }}>
+      {active.map(([label, val, color]) => (
+        <span key={label} style={{
+          fontSize: '0.7rem', fontWeight: 700, color: 'white',
+          background: color, borderRadius: '4px', padding: '1px 6px',
+        }}>{label} {val.toFixed(2)}</span>
+      ))}
+    </span>
+  )
+}
+
+// ── Work History Table ───────────────────────────────────────────────────────
+
+function HistoryTable({ entries, lawnSqft, onDelete }) {
+  return (
+    <div style={{ overflowX: 'auto' }}>
+      <table className="wl-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Product</th>
+            <th>lbs</th>
+            <th>N</th><th>P</th><th>K</th><th>Fe</th><th>S</th>
+            <th>Spreader</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {entries.map(entry => {
+            const lbs = entry.lbs_applied ? parseFloat(entry.lbs_applied) : null
+            const nuts = nutrientLbs(entry, 'lbs_applied')
+            return (
+              <tr key={entry.id}>
+                <td className="wl-td-date">{entry.date}</td>
+                <td>
+                  <div style={{ fontWeight: 600, color: '#2d5a27' }}>{entry.activity}</div>
+                  {entry.notes && <div style={{ fontSize: '0.78rem', color: '#6b7280', marginTop: '2px' }}>{entry.notes}</div>}
+                </td>
+                <td className="wl-td-num">{lbs ? lbs.toFixed(1) : '—'}</td>
+                {['n','p','k','fe','s'].map(key => (
+                  <td key={key} className="wl-td-num">
+                    {nuts[key] != null ? <span className="wl-nut-chip wl-nut-chip--{key}">{nuts[key].toFixed(2)}</span> : <span style={{ color: '#d1d5db' }}>—</span>}
+                  </td>
+                ))}
+                <td style={{ fontSize: '0.82rem', color: '#6b7280' }}>{entry.spreader_setting || '—'}</td>
+                <td><button className="delete-btn" onClick={() => onDelete(entry.id)}>Delete</button></td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+// ── Planned Work Table ───────────────────────────────────────────────────────
+
+function PlanTable({ entries, lawnSqft, editingId, editForm, setEditForm, submitting, onToggle, onCancelEdit, onEditSubmit, onEdit, onDelete }) {
+  const COL_COUNT = 11
+  return (
+    <div style={{ overflowX: 'auto' }}>
+      <table className="wl-table">
+        <thead>
+          <tr>
+            <th style={{ width: '32px' }}></th>
+            <th>Date</th>
+            <th>Product</th>
+            <th>lbs</th>
+            <th>N</th><th>P</th><th>K</th><th>Fe</th><th>S</th>
+            <th>Spreader</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {entries.map(entry => {
+            if (editingId === entry.id) {
+              return (
+                <tr key={entry.id} style={{ background: '#f0f9ff' }}>
+                  <td colSpan={COL_COUNT} style={{ padding: '14px 12px' }}>
+                    <form onSubmit={(e) => onEditSubmit(e, entry.id)}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px', marginBottom: '10px' }}>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label>Date</label>
+                          <input type="date" value={editForm.planned_date} onChange={e => setEditForm({ ...editForm, planned_date: e.target.value })} required />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0, gridColumn: 'span 2' }}>
+                          <label>Product</label>
+                          <input type="text" value={editForm.activity} onChange={e => setEditForm({ ...editForm, activity: e.target.value })} required />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label>N %</label>
+                          <input type="number" step="0.01" value={editForm.n_pct} onChange={e => setEditForm({ ...editForm, n_pct: e.target.value })} />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label>P %</label>
+                          <input type="number" step="0.01" value={editForm.p_pct} onChange={e => setEditForm({ ...editForm, p_pct: e.target.value })} />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label>K %</label>
+                          <input type="number" step="0.01" value={editForm.k_pct} onChange={e => setEditForm({ ...editForm, k_pct: e.target.value })} />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label>Fe %</label>
+                          <input type="number" step="0.01" value={editForm.fe_pct} onChange={e => setEditForm({ ...editForm, fe_pct: e.target.value })} />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label>S %</label>
+                          <input type="number" step="0.01" value={editForm.s_pct} onChange={e => setEditForm({ ...editForm, s_pct: e.target.value })} />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label>lbs Planned</label>
+                          <input type="number" step="0.1" value={editForm.lbs_planned} onChange={e => setEditForm({ ...editForm, lbs_planned: e.target.value })} />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label>Spreader</label>
+                          <input type="text" value={editForm.spreader_setting} onChange={e => setEditForm({ ...editForm, spreader_setting: e.target.value })} />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0, gridColumn: 'span 2' }}>
+                          <label>Notes</label>
+                          <input type="text" value={editForm.notes} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} />
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button type="submit" className="submit-btn" disabled={submitting}>{submitting ? 'Saving...' : 'Save'}</button>
+                        <button type="button" className="submit-btn secondary" onClick={onCancelEdit}>Cancel</button>
+                      </div>
+                    </form>
+                  </td>
+                </tr>
+              )
+            }
+
+            const lbs = entry.lbs_planned ? parseFloat(entry.lbs_planned) : null
+            const nuts = nutrientLbs(entry, 'lbs_planned')
+            return (
+              <tr key={entry.id}>
+                <td style={{ textAlign: 'center' }}>
+                  <input type="checkbox" checked={!!entry.completed} onChange={() => onToggle(entry.id)}
+                    style={{ width: '15px', height: '15px', cursor: 'pointer', accentColor: '#16a34a' }} />
+                </td>
+                <td className="wl-td-date">{entry.planned_date}</td>
+                <td>
+                  <div style={{ fontWeight: 600, color: '#2d5a27' }}>{entry.activity}</div>
+                  {entry.notes && <div style={{ fontSize: '0.78rem', color: '#6b7280', marginTop: '2px' }}>{entry.notes}</div>}
+                </td>
+                <td className="wl-td-num">{lbs ? lbs.toFixed(1) : '—'}</td>
+                {['n','p','k','fe','s'].map(key => (
+                  <td key={key} className="wl-td-num">
+                    {nuts[key] != null ? nuts[key].toFixed(2) : <span style={{ color: '#d1d5db' }}>—</span>}
+                  </td>
+                ))}
+                <td style={{ fontSize: '0.82rem', color: '#6b7280' }}>{entry.spreader_setting || '—'}</td>
+                <td>
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    <button className="submit-btn secondary" style={{ padding: '3px 8px', fontSize: '0.78rem' }} onClick={() => onEdit(entry)}>Edit</button>
+                    <button className="delete-btn" onClick={() => onDelete(entry.id)}>Delete</button>
+                  </div>
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 export default function WorkLog() {
   const [entries, setEntries] = useState([])
   const [soilTests, setSoilTests] = useState([])
-  const [workForm, setWorkForm] = useState(EMPTY_WORK_FORM)
+  const [plannedWork, setPlannedWork] = useState([])
   const [soilForm, setSoilForm] = useState(EMPTY_SOIL_FORM)
-  const [activeTab, setActiveTab] = useState('work') // 'work' | 'soil'
+  const [planForm, setPlanForm] = useState(EMPTY_PLAN_FORM)
+  const [activeTab, setActiveTab] = useState('plan') // 'plan' | 'soil'
+  const [editingId, setEditingId] = useState(null)
+  const [editForm, setEditForm] = useState(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [lawnSqft, setLawnSqft] = useState(null)
@@ -168,8 +422,9 @@ export default function WorkLog() {
       fetch('/api/settings').then(r => r.json()),
       fetch('/api/worklog').then(r => r.json()),
       fetch('/api/soiltest').then(r => r.json()),
+      fetch('/api/planned-work').then(r => r.json()),
     ])
-      .then(([settings, worklog, soiltests]) => {
+      .then(([settings, worklog, soiltests, planned]) => {
         setLawnSqft(settings.lawn_sqft ? parseFloat(settings.lawn_sqft) : null)
         setTargets({
           n_target: settings.n_target ? parseFloat(settings.n_target) : null,
@@ -180,31 +435,11 @@ export default function WorkLog() {
         })
         setEntries(worklog)
         setSoilTests(soiltests)
+        setPlannedWork(planned)
       })
       .catch(err => console.error('Error fetching data:', err))
       .finally(() => setLoading(false))
   }, [])
-
-  async function handleWorkSubmit(e) {
-    e.preventDefault()
-    if (!workForm.activity.trim()) return
-    setSubmitting(true)
-    try {
-      const res = await fetch('/api/worklog', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(workForm),
-      })
-      if (res.ok) {
-        setWorkForm({ ...EMPTY_WORK_FORM, date: todayString() })
-        setEntries(await fetch('/api/worklog').then(r => r.json()))
-      }
-    } catch (err) {
-      console.error('Error creating work log entry:', err)
-    } finally {
-      setSubmitting(false)
-    }
-  }
 
   async function handleSoilSubmit(e) {
     e.preventDefault()
@@ -226,10 +461,38 @@ export default function WorkLog() {
     }
   }
 
+  async function handlePlanSubmit(e) {
+    e.preventDefault()
+    if (!planForm.activity.trim()) return
+    setSubmitting(true)
+    try {
+      const res = await fetch('/api/planned-work', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(planForm),
+      })
+      if (res.ok) {
+        setPlanForm({ ...EMPTY_PLAN_FORM, planned_date: todayString() })
+        setPlannedWork(await fetch('/api/planned-work').then(r => r.json()))
+      }
+    } catch (err) {
+      console.error('Error creating planned work entry:', err)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   async function handleDeleteWork(id) {
     try {
       const res = await fetch(`/api/worklog/${id}`, { method: 'DELETE' })
-      if (res.ok) setEntries(await fetch('/api/worklog').then(r => r.json()))
+      if (res.ok) {
+        const [worklog, planned] = await Promise.all([
+          fetch('/api/worklog').then(r => r.json()),
+          fetch('/api/planned-work').then(r => r.json()),
+        ])
+        setEntries(worklog)
+        setPlannedWork(planned)
+      }
     } catch (err) {
       console.error('Error deleting work log entry:', err)
     }
@@ -244,7 +507,74 @@ export default function WorkLog() {
     }
   }
 
-  // Calculate yearly totals for current year
+  async function handleDeletePlan(id) {
+    try {
+      const res = await fetch(`/api/planned-work/${id}`, { method: 'DELETE' })
+      if (res.ok) setPlannedWork(await fetch('/api/planned-work').then(r => r.json()))
+    } catch (err) {
+      console.error('Error deleting planned work entry:', err)
+    }
+  }
+
+  async function handleToggleComplete(id) {
+    try {
+      const res = await fetch(`/api/planned-work/${id}/complete`, { method: 'PATCH' })
+      if (res.ok) {
+        const [planned, worklog] = await Promise.all([
+          fetch('/api/planned-work').then(r => r.json()),
+          fetch('/api/worklog').then(r => r.json()),
+        ])
+        setPlannedWork(planned)
+        setEntries(worklog)
+      }
+    } catch (err) {
+      console.error('Error toggling planned work completion:', err)
+    }
+  }
+
+  function startEdit(entry) {
+    setEditingId(entry.id)
+    setEditForm({
+      planned_date: entry.planned_date,
+      activity: entry.activity,
+      notes: entry.notes || '',
+      n_pct: entry.n_pct ?? '',
+      p_pct: entry.p_pct ?? '',
+      k_pct: entry.k_pct ?? '',
+      fe_pct: entry.fe_pct ?? '',
+      s_pct: entry.s_pct ?? '',
+      lbs_planned: entry.lbs_planned ?? '',
+      spreader_setting: entry.spreader_setting || '',
+    })
+  }
+
+  function cancelEdit() {
+    setEditingId(null)
+    setEditForm(null)
+  }
+
+  async function handleEditSubmit(e, id) {
+    e.preventDefault()
+    setSubmitting(true)
+    try {
+      const res = await fetch(`/api/planned-work/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm),
+      })
+      if (res.ok) {
+        setEditingId(null)
+        setEditForm(null)
+        setPlannedWork(await fetch('/api/planned-work').then(r => r.json()))
+      }
+    } catch (err) {
+      console.error('Error updating planned work entry:', err)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  // Calculate yearly totals for current year from work_log entries
   function getYearlyTotals() {
     const currentYear = new Date().getFullYear()
     const yearlyEntries = entries.filter(e => e.date.startsWith(currentYear.toString()))
@@ -263,9 +593,30 @@ export default function WorkLog() {
     return { n_total, p_total, k_total, fe_total, s_total }
   }
 
+  // Calculate planned (incomplete) totals for current year
+  function getPlannedTotals() {
+    const currentYear = new Date().getFullYear()
+    const pending = plannedWork.filter(p => !p.completed && p.planned_date.startsWith(currentYear.toString()))
+
+    let n_total = 0, p_total = 0, k_total = 0, fe_total = 0, s_total = 0
+
+    pending.forEach(entry => {
+      const lbs = entry.lbs_planned ? parseFloat(entry.lbs_planned) : 0
+      if (entry.n_pct && lbs) n_total += (parseFloat(entry.n_pct) / 100) * lbs
+      if (entry.p_pct && lbs) p_total += (parseFloat(entry.p_pct) / 100) * lbs
+      if (entry.k_pct && lbs) k_total += (parseFloat(entry.k_pct) / 100) * lbs
+      if (entry.fe_pct && lbs) fe_total += (parseFloat(entry.fe_pct) / 100) * lbs
+      if (entry.s_pct && lbs) s_total += (parseFloat(entry.s_pct) / 100) * lbs
+    })
+
+    return { n_total, p_total, k_total, fe_total, s_total }
+  }
+
   // Most recent soil test (already sorted DESC by date from API)
   const latestSoilTest = soilTests.length > 0 ? soilTests[0] : null
   const adjustedTargets = applySoilAdjustments(targets, lawnSqft, latestSoilTest)
+
+  const hasPendingPlanned = plannedWork.some(p => !p.completed)
 
   return (
     <>
@@ -280,6 +631,7 @@ export default function WorkLog() {
           )}
           {(() => {
             const { n_total, p_total, k_total, fe_total, s_total } = getYearlyTotals()
+            const planned = getPlannedTotals()
             const hasTargets = adjustedTargets.n_target || adjustedTargets.p_target || adjustedTargets.k_target || adjustedTargets.fe_target || adjustedTargets.s_target
 
             if (!hasTargets) {
@@ -287,11 +639,11 @@ export default function WorkLog() {
             }
 
             const nutrients = [
-              adjustedTargets.n_target && { label: 'Nitrogen',   symbol: 'N',  total: n_total,  target: adjustedTargets.n_target,  adjusted: adjustedTargets.adjusted.n },
-              adjustedTargets.p_target !== null && adjustedTargets.p_target > 0 && { label: 'Phosphorus', symbol: 'P',  total: p_total,  target: adjustedTargets.p_target,  adjusted: adjustedTargets.adjusted.p },
-              adjustedTargets.k_target !== null && adjustedTargets.k_target > 0 && { label: 'Potassium',  symbol: 'K',  total: k_total,  target: adjustedTargets.k_target,  adjusted: adjustedTargets.adjusted.k },
-              adjustedTargets.fe_target && { label: 'Iron',      symbol: 'Fe', total: fe_total, target: adjustedTargets.fe_target, adjusted: false },
-              adjustedTargets.s_target && { label: 'Sulfur',     symbol: 'S',  total: s_total,  target: adjustedTargets.s_target,  adjusted: false },
+              adjustedTargets.n_target && { label: 'Nitrogen',   symbol: 'N',  total: n_total,  target: adjustedTargets.n_target,  adjusted: adjustedTargets.adjusted.n,  plannedTotal: planned.n_total },
+              adjustedTargets.p_target !== null && adjustedTargets.p_target > 0 && { label: 'Phosphorus', symbol: 'P',  total: p_total,  target: adjustedTargets.p_target,  adjusted: adjustedTargets.adjusted.p,  plannedTotal: planned.p_total },
+              adjustedTargets.k_target !== null && adjustedTargets.k_target > 0 && { label: 'Potassium',  symbol: 'K',  total: k_total,  target: adjustedTargets.k_target,  adjusted: adjustedTargets.adjusted.k,  plannedTotal: planned.k_total },
+              adjustedTargets.fe_target && { label: 'Iron',      symbol: 'Fe', total: fe_total, target: adjustedTargets.fe_target, adjusted: false,                        plannedTotal: planned.fe_total },
+              adjustedTargets.s_target && { label: 'Sulfur',     symbol: 'S',  total: s_total,  target: adjustedTargets.s_target,  adjusted: false,                        plannedTotal: planned.s_total },
             ].filter(Boolean)
 
             const skipped = [
@@ -306,8 +658,14 @@ export default function WorkLog() {
                     <NutrientGaugeCard key={n.symbol} {...n} />
                   ))}
                 </div>
+                {hasPendingPlanned && (
+                  <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ display: 'inline-block', width: '20px', height: '6px', borderRadius: '3px', background: 'rgba(100,100,100,0.25)' }} />
+                    Faded arc shows planned (not yet applied) applications
+                  </div>
+                )}
                 {skipped.length > 0 && (
-                  <div style={{ fontSize: '0.78rem', color: '#6b7280', marginTop: '10px' }}>
+                  <div style={{ fontSize: '0.78rem', color: '#6b7280', marginTop: '6px' }}>
                     Skipped (soil level high): {skipped.join(', ')}
                   </div>
                 )}
@@ -317,16 +675,16 @@ export default function WorkLog() {
         </div>
       )}
 
-      {/* Log form with tab switcher */}
+      {/* Add form */}
       <div className="card">
         <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
           <button
             type="button"
-            className={activeTab === 'work' ? 'submit-btn' : 'submit-btn secondary'}
+            className={activeTab === 'plan' ? 'submit-btn' : 'submit-btn secondary'}
             style={{ flex: 1 }}
-            onClick={() => setActiveTab('work')}
+            onClick={() => setActiveTab('plan')}
           >
-            Log Work
+            Plan Work
           </button>
           <button
             type="button"
@@ -338,130 +696,130 @@ export default function WorkLog() {
           </button>
         </div>
 
-        {activeTab === 'work' && (
-          <form onSubmit={handleWorkSubmit}>
+        {activeTab === 'plan' && (
+          <form onSubmit={handlePlanSubmit}>
             <div className="form-row">
               <div className="form-group">
-                <label htmlFor="date">Date</label>
+                <label htmlFor="planned_date">Planned Date</label>
                 <input
-                  id="date"
+                  id="planned_date"
                   type="date"
-                  value={workForm.date}
-                  onChange={(e) => setWorkForm({ ...workForm, date: e.target.value })}
+                  value={planForm.planned_date}
+                  onChange={(e) => setPlanForm({ ...planForm, planned_date: e.target.value })}
                   required
                 />
               </div>
               <div className="form-group">
-                <label htmlFor="activity">Activity</label>
+                <label htmlFor="plan_activity">Product</label>
                 <input
-                  id="activity"
+                  id="plan_activity"
                   type="text"
-                  placeholder="e.g. Applied fertilizer"
-                  value={workForm.activity}
-                  onChange={(e) => setWorkForm({ ...workForm, activity: e.target.value })}
+                  placeholder="e.g. Milorganite 6-4-0"
+                  value={planForm.activity}
+                  onChange={(e) => setPlanForm({ ...planForm, activity: e.target.value })}
                   required
                 />
               </div>
             </div>
 
             <div className="form-group">
-              <label htmlFor="notes">Notes</label>
+              <label htmlFor="plan_notes">Notes</label>
               <textarea
-                id="notes"
+                id="plan_notes"
                 placeholder="Optional notes..."
-                value={workForm.notes}
-                onChange={(e) => setWorkForm({ ...workForm, notes: e.target.value })}
+                value={planForm.notes}
+                onChange={(e) => setPlanForm({ ...planForm, notes: e.target.value })}
               />
             </div>
 
             <div className="form-section-header">Product Details</div>
             <div className="form-row">
               <div className="form-group">
-                <label htmlFor="n_pct">Nitrogen (N) %</label>
+                <label htmlFor="plan_n_pct">Nitrogen (N) %</label>
                 <input
-                  id="n_pct"
+                  id="plan_n_pct"
                   type="number"
                   step="0.01"
                   placeholder="e.g. 46"
-                  value={workForm.n_pct}
-                  onChange={(e) => setWorkForm({ ...workForm, n_pct: e.target.value })}
+                  value={planForm.n_pct}
+                  onChange={(e) => setPlanForm({ ...planForm, n_pct: e.target.value })}
                 />
               </div>
               <div className="form-group">
-                <label htmlFor="p_pct">Phosphorus (P) %</label>
+                <label htmlFor="plan_p_pct">Phosphorus (P) %</label>
                 <input
-                  id="p_pct"
+                  id="plan_p_pct"
                   type="number"
                   step="0.01"
                   placeholder="e.g. 0"
-                  value={workForm.p_pct}
-                  onChange={(e) => setWorkForm({ ...workForm, p_pct: e.target.value })}
+                  value={planForm.p_pct}
+                  onChange={(e) => setPlanForm({ ...planForm, p_pct: e.target.value })}
                 />
               </div>
               <div className="form-group">
-                <label htmlFor="k_pct">Potassium (K) %</label>
+                <label htmlFor="plan_k_pct">Potassium (K) %</label>
                 <input
-                  id="k_pct"
+                  id="plan_k_pct"
                   type="number"
                   step="0.01"
                   placeholder="e.g. 0"
-                  value={workForm.k_pct}
-                  onChange={(e) => setWorkForm({ ...workForm, k_pct: e.target.value })}
+                  value={planForm.k_pct}
+                  onChange={(e) => setPlanForm({ ...planForm, k_pct: e.target.value })}
                 />
               </div>
             </div>
 
             <div className="form-row">
               <div className="form-group">
-                <label htmlFor="fe_pct">Iron (Fe) %</label>
+                <label htmlFor="plan_fe_pct">Iron (Fe) %</label>
                 <input
-                  id="fe_pct"
+                  id="plan_fe_pct"
                   type="number"
                   step="0.01"
                   placeholder="e.g. 0"
-                  value={workForm.fe_pct}
-                  onChange={(e) => setWorkForm({ ...workForm, fe_pct: e.target.value })}
+                  value={planForm.fe_pct}
+                  onChange={(e) => setPlanForm({ ...planForm, fe_pct: e.target.value })}
                 />
               </div>
               <div className="form-group">
-                <label htmlFor="s_pct">Sulfur (S) %</label>
+                <label htmlFor="plan_s_pct">Sulfur (S) %</label>
                 <input
-                  id="s_pct"
+                  id="plan_s_pct"
                   type="number"
                   step="0.01"
                   placeholder="e.g. 0"
-                  value={workForm.s_pct}
-                  onChange={(e) => setWorkForm({ ...workForm, s_pct: e.target.value })}
+                  value={planForm.s_pct}
+                  onChange={(e) => setPlanForm({ ...planForm, s_pct: e.target.value })}
                 />
               </div>
               <div className="form-group">
-                <label htmlFor="lbs_applied">Pounds Applied</label>
+                <label htmlFor="plan_lbs_planned">Pounds Planned</label>
                 <input
-                  id="lbs_applied"
+                  id="plan_lbs_planned"
                   type="number"
                   step="0.1"
                   placeholder="e.g. 10.5"
-                  value={workForm.lbs_applied}
-                  onChange={(e) => setWorkForm({ ...workForm, lbs_applied: e.target.value })}
+                  value={planForm.lbs_planned}
+                  onChange={(e) => setPlanForm({ ...planForm, lbs_planned: e.target.value })}
                 />
               </div>
             </div>
 
             <div className="form-row">
               <div className="form-group">
-                <label htmlFor="spreader_setting">Spreader Setting</label>
+                <label htmlFor="plan_spreader_setting">Spreader Setting</label>
                 <input
-                  id="spreader_setting"
+                  id="plan_spreader_setting"
                   type="text"
                   placeholder="e.g. 18"
-                  value={workForm.spreader_setting}
-                  onChange={(e) => setWorkForm({ ...workForm, spreader_setting: e.target.value })}
+                  value={planForm.spreader_setting}
+                  onChange={(e) => setPlanForm({ ...planForm, spreader_setting: e.target.value })}
                 />
               </div>
             </div>
 
             <button type="submit" className="submit-btn" disabled={submitting}>
-              {submitting ? 'Saving...' : 'Log Work'}
+              {submitting ? 'Saving...' : 'Add to Plan'}
             </button>
           </form>
         )}
@@ -557,7 +915,27 @@ export default function WorkLog() {
         )}
       </div>
 
-      {/* Work log entries */}
+      {/* Planned work */}
+      {plannedWork.some(p => !p.completed) && (
+        <div className="card">
+          <h2>Planned Work</h2>
+          <PlanTable
+            entries={plannedWork.filter(p => !p.completed)}
+            lawnSqft={lawnSqft}
+            editingId={editingId}
+            editForm={editForm}
+            setEditForm={setEditForm}
+            submitting={submitting}
+            onToggle={handleToggleComplete}
+            onEdit={startEdit}
+            onCancelEdit={cancelEdit}
+            onEditSubmit={handleEditSubmit}
+            onDelete={handleDeletePlan}
+          />
+        </div>
+      )}
+
+      {/* Work history */}
       <div className="card">
         <h2>Work History</h2>
         {loading ? (
@@ -565,102 +943,7 @@ export default function WorkLog() {
         ) : entries.length === 0 ? (
           <div className="empty-state">No work logged yet.</div>
         ) : (
-          <div className="worklog-entries">
-            {entries.map((entry) => {
-              const lbs = entry.lbs_applied ? parseFloat(entry.lbs_applied) : null
-              const perThousandSqft = lbs && lawnSqft ? (lbs / (lawnSqft / 1000)) : null
-              const n_total = entry.n_pct && lbs ? (entry.n_pct / 100) * lbs : null
-              const p_total = entry.p_pct && lbs ? (entry.p_pct / 100) * lbs : null
-              const k_total = entry.k_pct && lbs ? (entry.k_pct / 100) * lbs : null
-              const fe_total = entry.fe_pct && lbs ? (entry.fe_pct / 100) * lbs : null
-              const s_total = entry.s_pct && lbs ? (entry.s_pct / 100) * lbs : null
-
-              const n_per_k = n_total && lawnSqft ? n_total / (lawnSqft / 1000) : null
-              const p_per_k = p_total && lawnSqft ? p_total / (lawnSqft / 1000) : null
-              const k_per_k = k_total && lawnSqft ? k_total / (lawnSqft / 1000) : null
-              const fe_per_k = fe_total && lawnSqft ? fe_total / (lawnSqft / 1000) : null
-              const s_per_k = s_total && lawnSqft ? s_total / (lawnSqft / 1000) : null
-
-              return (
-                <div key={entry.id} className="worklog-entry">
-                  <div className="entry-header">
-                    <div className="entry-title">
-                      <span className="entry-date">{entry.date}</span>
-                      <span className="entry-activity">{entry.activity}</span>
-                    </div>
-                    <button
-                      className="delete-btn"
-                      onClick={() => handleDeleteWork(entry.id)}
-                      title="Delete entry"
-                    >
-                      Delete
-                    </button>
-                  </div>
-
-                  {entry.notes && <div className="entry-notes"><strong>Notes:</strong> {entry.notes}</div>}
-
-                  {entry.spreader_setting && (
-                    <div className="entry-field">
-                      <strong>Spreader Setting:</strong> {entry.spreader_setting}
-                    </div>
-                  )}
-
-                  {entry.lbs_applied && (
-                    <div className="entry-field">
-                      <strong>Pounds Applied:</strong> {parseFloat(entry.lbs_applied).toFixed(2)} lbs
-                      {perThousandSqft && lawnSqft && (
-                        <span className="secondary"> ({perThousandSqft.toFixed(2)} lbs per 1000 sqft)</span>
-                      )}
-                    </div>
-                  )}
-
-                  {(n_total || p_total || k_total || fe_total || s_total) && (
-                    <div className="entry-nutrients">
-                      <div className="nutrient-row">
-                        {n_total !== null && (
-                          <div className="nutrient">
-                            <span className="nutrient-label">N (Total):</span>
-                            <span className="nutrient-value">{n_total.toFixed(2)} lbs</span>
-                            {n_per_k !== null && <span className="nutrient-per-k">{n_per_k.toFixed(2)} lbs/1K sqft</span>}
-                          </div>
-                        )}
-                        {p_total !== null && (
-                          <div className="nutrient">
-                            <span className="nutrient-label">P (Total):</span>
-                            <span className="nutrient-value">{p_total.toFixed(2)} lbs</span>
-                            {p_per_k !== null && <span className="nutrient-per-k">{p_per_k.toFixed(2)} lbs/1K sqft</span>}
-                          </div>
-                        )}
-                        {k_total !== null && (
-                          <div className="nutrient">
-                            <span className="nutrient-label">K (Total):</span>
-                            <span className="nutrient-value">{k_total.toFixed(2)} lbs</span>
-                            {k_per_k !== null && <span className="nutrient-per-k">{k_per_k.toFixed(2)} lbs/1K sqft</span>}
-                          </div>
-                        )}
-                      </div>
-                      <div className="nutrient-row">
-                        {fe_total !== null && (
-                          <div className="nutrient">
-                            <span className="nutrient-label">Fe (Total):</span>
-                            <span className="nutrient-value">{fe_total.toFixed(2)} lbs</span>
-                            {fe_per_k !== null && <span className="nutrient-per-k">{fe_per_k.toFixed(2)} lbs/1K sqft</span>}
-                          </div>
-                        )}
-                        {s_total !== null && (
-                          <div className="nutrient">
-                            <span className="nutrient-label">S (Total):</span>
-                            <span className="nutrient-value">{s_total.toFixed(2)} lbs</span>
-                            {s_per_k !== null && <span className="nutrient-per-k">{s_per_k.toFixed(2)} lbs/1K sqft</span>}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
+          <HistoryTable entries={entries} lawnSqft={lawnSqft} onDelete={handleDeleteWork} />
         )}
       </div>
 
@@ -668,45 +951,33 @@ export default function WorkLog() {
       {soilTests.length > 0 && (
         <div className="card">
           <h2>Soil Test History</h2>
-          <div className="worklog-entries">
-            {soilTests.map((test) => {
-              const fields = [
-                soilTestLabel('pH', test.ph, ''),
-                soilTestLabel('OM', test.om_pct, '%'),
-                soilTestLabel('P', test.p_ppm, ' ppm'),
-                soilTestLabel('K', test.k_ppm, ' ppm'),
-              ].filter(Boolean)
-
-              return (
-                <div key={test.id} className="worklog-entry">
-                  <div className="entry-header">
-                    <div className="entry-title">
-                      <span className="entry-date">{test.date}</span>
-                      <span className="entry-activity">Soil Test</span>
-                    </div>
-                    <button
-                      className="delete-btn"
-                      onClick={() => handleDeleteSoil(test.id)}
-                      title="Delete soil test"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                  {fields.length > 0 && (
-                    <div className="entry-nutrients">
-                      <div className="nutrient-row">
-                        {fields.map(f => (
-                          <div key={f} className="nutrient">
-                            <span className="nutrient-value">{f}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {test.notes && <div className="entry-notes"><strong>Notes:</strong> {test.notes}</div>}
-                </div>
-              )
-            })}
+          <div style={{ overflowX: 'auto' }}>
+            <table className="wl-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>pH</th>
+                  <th>OM (%)</th>
+                  <th>P (ppm)</th>
+                  <th>K (ppm)</th>
+                  <th>Notes</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {soilTests.map(test => (
+                  <tr key={test.id}>
+                    <td className="wl-td-date">{test.date}</td>
+                    <td className="wl-td-num">{test.ph ?? '—'}</td>
+                    <td className="wl-td-num">{test.om_pct ?? '—'}</td>
+                    <td className="wl-td-num">{test.p_ppm ?? '—'}</td>
+                    <td className="wl-td-num">{test.k_ppm ?? '—'}</td>
+                    <td style={{ fontSize: '0.82rem', color: '#6b7280' }}>{test.notes || '—'}</td>
+                    <td><button className="delete-btn" onClick={() => handleDeleteSoil(test.id)}>Delete</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
