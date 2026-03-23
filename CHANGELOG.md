@@ -1,3 +1,9 @@
+## [1.5.1](https://github.com/tkhom3/docker-lawncare/compare/v1.5.0...v1.5.1) (2026-03-23)
+
+### 🐛 Bug Fixes
+
+* implement express-rate-limit ([1c79ea7](https://github.com/tkhom3/docker-lawncare/commit/1c79ea71479274bc2e36e1c186c2a44ea29ecaeb))
+
 ## [1.5.0](https://github.com/tkhom3/docker-lawncare/compare/v1.4.1...v1.5.0) (2026-03-23)
 
 ### ✨ Features
