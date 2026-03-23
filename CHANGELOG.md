@@ -1,3 +1,10 @@
+## [1.5.0](https://github.com/tkhom3/docker-lawncare/compare/v1.4.1...v1.5.0) (2026-03-23)
+
+### ✨ Features
+
+* add planned-work ([73ea7d0](https://github.com/tkhom3/docker-lawncare/commit/73ea7d074757fe6519bd206a05194df3842dd817))
+* remove log work in favor of plan work ([de35585](https://github.com/tkhom3/docker-lawncare/commit/de3558506b3450cbc1f03c361998eee37a23f98e))
+
 ## [1.4.1](https://github.com/tkhom3/docker-lawncare/compare/v1.4.0...v1.4.1) (2026-03-15)
 
 ### 🐛 Bug Fixes
