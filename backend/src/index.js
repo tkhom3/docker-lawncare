@@ -8,6 +8,7 @@ const worklogRouter = require('./routes/worklog');
 const soiltestRouter = require('./routes/soiltest');
 const settingsRouter = require('./routes/settings');
 const statusRouter = require('./routes/status');
+const plannedWorkRouter = require('./routes/plannedwork');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -76,6 +77,7 @@ app.use('/api/worklog', worklogRouter);
 app.use('/api/soiltest', soiltestRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/status', statusRouter);
+app.use('/api/planned-work', plannedWorkRouter);
 
 // Catch-all: serve React's index.html for client-side routing
 app.get('/*path', frontendLimiter, (req, res) => {

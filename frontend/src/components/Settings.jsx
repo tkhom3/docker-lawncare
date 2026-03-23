@@ -18,12 +18,15 @@ export default function Settings() {
   const [apiKeySet, setApiKeySet] = useState(false)
   const [collectorLog, setCollectorLog] = useState([]) // { level, message }[]
   const [collectingDone, setCollectingDone] = useState(false)
+  const [latestSoilTest, setLatestSoilTest] = useState(null)
   const logEndRef = useRef(null)
 
   useEffect(() => {
-    fetch('/api/settings')
-      .then(r => r.json())
-      .then(data => {
+    Promise.all([
+      fetch('/api/settings').then(r => r.json()),
+      fetch('/api/soiltest').then(r => r.json()),
+    ])
+      .then(([data, soiltests]) => {
         setApiKeySet(!!data.vc_api_key)
         setForm({
           lat: data.lat || '',
@@ -36,6 +39,7 @@ export default function Settings() {
           fe_target: data.fe_target || '',
           s_target: data.s_target || '',
         })
+        setLatestSoilTest(soiltests.length > 0 ? soiltests[0] : null)
       })
       .catch(() => setStatus('error'))
       .finally(() => setLoading(false))
@@ -84,19 +88,47 @@ export default function Settings() {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [collectorLog])
 
-  // Calculate recommended nutrient targets based on lawn size
-  // For cool season grass (midwest): lbs per 1000 sq ft
+  // Calculate recommended nutrient targets based on lawn size + soil test adjustments
+  // Base values for cool season grass (midwest): lbs per 1000 sq ft
+  // Soil test multipliers follow ISU Midwest thresholds (same as WorkLog)
   function getRecommendations() {
     const sqft = parseFloat(form.lawn_sqft) || 0
     if (sqft <= 0) return null
-    
+
     const thousand = sqft / 1000
+    const base = {
+      n: 4 * thousand,
+      p: 2.5 * thousand,
+      k: 5 * thousand,
+      fe: 0.3 * thousand,
+      s: 1 * thousand,
+    }
+    const adjusted = { n: false, p: false, k: false }
+
+    if (latestSoilTest) {
+      const { p_ppm, k_ppm, om_pct } = latestSoilTest
+
+      if (p_ppm != null) {
+        const m = p_ppm < 15 ? 1.0 : p_ppm < 30 ? 0.75 : p_ppm < 50 ? 0.5 : 0.0
+        if (m !== 1.0) { base.p *= m; adjusted.p = true }
+      }
+      if (k_ppm != null) {
+        const m = k_ppm < 100 ? 1.0 : k_ppm < 150 ? 0.75 : k_ppm < 200 ? 0.5 : 0.0
+        if (m !== 1.0) { base.k *= m; adjusted.k = true }
+      }
+      if (om_pct != null) {
+        const m = om_pct > 5 ? 0.8 : om_pct > 3 ? 0.9 : 1.0
+        if (m !== 1.0) { base.n *= m; adjusted.n = true }
+      }
+    }
+
     return {
-      n_target: (4 * thousand).toFixed(1),
-      p_target: (2.5 * thousand).toFixed(1),
-      k_target: (5 * thousand).toFixed(1),
-      fe_target: (0.3 * thousand).toFixed(1),
-      s_target: (1 * thousand).toFixed(1),
+      n_target: base.n.toFixed(1),
+      p_target: base.p.toFixed(1),
+      k_target: base.k.toFixed(1),
+      fe_target: base.fe.toFixed(1),
+      s_target: base.s.toFixed(1),
+      adjusted,
     }
   }
 
@@ -186,11 +218,16 @@ export default function Settings() {
           
           {(() => {
             const recommendations = getRecommendations()
-            return recommendations ? (
+            if (!recommendations) {
+              return <div className="settings-note">Enter your lawn size above to see nutrient recommendations.</div>
+            }
+            const { adjusted } = recommendations
+            const anySoilAdjusted = adjusted.n || adjusted.p || adjusted.k
+            return (
               <div className="recommendations-section">
                 <div className="recommendations-header">
                   <span className="recommendations-title">Cool Season Grass Recommendations</span>
-                  <button 
+                  <button
                     type="button"
                     className="apply-recommendations-btn"
                     onClick={applyRecommendations}
@@ -198,110 +235,39 @@ export default function Settings() {
                     Apply Recommendations
                   </button>
                 </div>
+                {anySoilAdjusted && latestSoilTest && (
+                  <div className="settings-note" style={{ marginBottom: '10px' }}>
+                    Adjusted from soil test on {latestSoilTest.date}
+                  </div>
+                )}
                 <div className="nutrient-input-group">
-                  <div className="nutrient-input-pair">
-                    <div className="nutrient-input-item">
-                      <label>
-                        Nitrogen (N)
-                        <input
-                          type="number"
-                          name="n_target"
-                          value={form.n_target}
-                          onChange={handleChange}
-                          min="0"
-                          step="0.1"
-                          placeholder="e.g. 100"
-                        />
-                      </label>
+                  {[
+                    { key: 'n_target', label: 'Nitrogen (N)',   adj: adjusted.n },
+                    { key: 'p_target', label: 'Phosphorus (P)', adj: adjusted.p },
+                    { key: 'k_target', label: 'Potassium (K)',  adj: adjusted.k },
+                    { key: 'fe_target', label: 'Iron (Fe)',     adj: false },
+                    { key: 's_target', label: 'Sulfur (S)',     adj: false },
+                  ].map(({ key, label, adj }) => (
+                    <div key={key} className="nutrient-input-pair">
+                      <div className="nutrient-input-header">
+                        <span className="nutrient-input-label">{label}</span>
+                        <span className="nutrient-recommendation">
+                          Rec: <strong>{recommendations[key]} lbs</strong>
+                          {adj && <span className="soil-adjusted-tag">soil-adjusted</span>}
+                        </span>
+                      </div>
+                      <input
+                        type="number"
+                        name={key}
+                        value={form[key]}
+                        onChange={handleChange}
+                        min="0"
+                        step="0.1"
+                      />
                     </div>
-                    <div className="nutrient-recommendation">
-                      Recommended: <strong>{recommendations.n_target} lbs</strong>
-                    </div>
-                  </div>
-
-                  <div className="nutrient-input-pair">
-                    <div className="nutrient-input-item">
-                      <label>
-                        Phosphorus (P)
-                        <input
-                          type="number"
-                          name="p_target"
-                          value={form.p_target}
-                          onChange={handleChange}
-                          min="0"
-                          step="0.1"
-                          placeholder="e.g. 30"
-                        />
-                      </label>
-                    </div>
-                    <div className="nutrient-recommendation">
-                      Recommended: <strong>{recommendations.p_target} lbs</strong>
-                    </div>
-                  </div>
-
-                  <div className="nutrient-input-pair">
-                    <div className="nutrient-input-item">
-                      <label>
-                        Potassium (K)
-                        <input
-                          type="number"
-                          name="k_target"
-                          value={form.k_target}
-                          onChange={handleChange}
-                          min="0"
-                          step="0.1"
-                          placeholder="e.g. 60"
-                        />
-                      </label>
-                    </div>
-                    <div className="nutrient-recommendation">
-                      Recommended: <strong>{recommendations.k_target} lbs</strong>
-                    </div>
-                  </div>
-
-                  <div className="nutrient-input-pair">
-                    <div className="nutrient-input-item">
-                      <label>
-                        Iron (Fe)
-                        <input
-                          type="number"
-                          name="fe_target"
-                          value={form.fe_target}
-                          onChange={handleChange}
-                          min="0"
-                          step="0.1"
-                          placeholder="e.g. 5"
-                        />
-                      </label>
-                    </div>
-                    <div className="nutrient-recommendation">
-                      Recommended: <strong>{recommendations.fe_target} lbs</strong>
-                    </div>
-                  </div>
-
-                  <div className="nutrient-input-pair">
-                    <div className="nutrient-input-item">
-                      <label>
-                        Sulfur (S)
-                        <input
-                          type="number"
-                          name="s_target"
-                          value={form.s_target}
-                          onChange={handleChange}
-                          min="0"
-                          step="0.1"
-                          placeholder="e.g. 20"
-                        />
-                      </label>
-                    </div>
-                    <div className="nutrient-recommendation">
-                      Recommended: <strong>{recommendations.s_target} lbs</strong>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </div>
-            ) : (
-              <div className="settings-note">Enter your lawn size above to see nutrient recommendations.</div>
             )
           })()}
         </div>

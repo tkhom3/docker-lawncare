@@ -96,6 +96,28 @@ const migrations = [
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `),
+
+  // v7 — add planned_work table for scheduling future applications
+  () => db.exec(`
+    CREATE TABLE IF NOT EXISTS planned_work (
+      id               INTEGER PRIMARY KEY AUTOINCREMENT,
+      planned_date     TEXT NOT NULL,
+      activity         TEXT NOT NULL,
+      notes            TEXT,
+      n_pct            REAL,
+      p_pct            REAL,
+      k_pct            REAL,
+      fe_pct           REAL,
+      s_pct            REAL,
+      lbs_planned      REAL,
+      spreader_setting TEXT,
+      completed        INTEGER NOT NULL DEFAULT 0,
+      created_at       DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `),
+
+  // v8 — link planned_work to the work_log entry created on completion
+  () => db.exec('ALTER TABLE planned_work ADD COLUMN work_log_id INTEGER REFERENCES work_log(id)'),
 ];
 
 // ---------------------------------------------------------------------------
