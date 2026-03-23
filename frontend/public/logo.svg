@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#e8f5e9"/>
+      <stop offset="100%" stop-color="#c8e6c9"/>
+    </linearGradient>
+    <linearGradient id="groundGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#388e3c"/>
+      <stop offset="100%" stop-color="#2d5a27"/>
+    </linearGradient>
+    <linearGradient id="sunGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fff176"/>
+      <stop offset="100%" stop-color="#ffca28"/>
+    </linearGradient>
+    <clipPath id="circle-clip">
+      <circle cx="100" cy="100" r="96"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="100" cy="100" r="96" fill="url(#skyGrad)"/>
+
+  <!-- Sun -->
+  <g transform="translate(148, 52)">
+    <!-- Sun rays -->
+    <line x1="0" y1="-22" x2="0" y2="-30" stroke="#ffca28" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="0" y1="22" x2="0" y2="30" stroke="#ffca28" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-22" y1="0" x2="-30" y2="0" stroke="#ffca28" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="22" y1="0" x2="30" y2="0" stroke="#ffca28" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-15.5" y1="-15.5" x2="-21" y2="-21" stroke="#ffca28" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="15.5" y1="-15.5" x2="21" y2="-21" stroke="#ffca28" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-15.5" y1="15.5" x2="-21" y2="21" stroke="#ffca28" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="15.5" y1="15.5" x2="21" y2="21" stroke="#ffca28" stroke-width="2.5" stroke-linecap="round"/>
+    <!-- Sun body -->
+    <circle cx="0" cy="0" r="16" fill="url(#sunGrad)"/>
+  </g>
+
+  <!-- Subtle chart line (data theme) -->
+  <polyline
+    points="20,115 45,105 70,110 95,95 120,100 145,88"
+    fill="none"
+    stroke="#81c784"
+    stroke-width="2.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    stroke-dasharray="4 3"
+    clip-path="url(#circle-clip)"
+  />
+
+  <!-- Ground / lawn strip -->
+  <rect x="4" y="130" width="192" height="66" fill="url(#groundGrad)" clip-path="url(#circle-clip)"/>
+
+  <!-- Grass blades — narrow tapering shapes, each curves toward its tip -->
+  <g clip-path="url(#circle-clip)">
+    <!-- far left cluster -->
+    <path fill="#4caf50" d="M20,130 Q21,118 24,107 Q23,118 22,130 Z"/>
+    <path fill="#66bb6a" d="M24,130 Q20,116 19,102 Q22,116 26,130 Z"/>
+    <path fill="#4caf50" d="M22,130 Q24,121 27,111 Q26,121 24,130 Z"/>
+
+    <!-- left cluster -->
+    <path fill="#66bb6a" d="M36,130 Q35,115 37,100 Q37,115 38,130 Z"/>
+    <path fill="#4caf50" d="M34,130 Q30,119 29,108 Q32,119 36,130 Z"/>
+    <path fill="#4caf50" d="M38,130 Q40,118 43,105 Q42,118 40,130 Z"/>
+
+    <!-- left-centre cluster -->
+    <path fill="#66bb6a" d="M55,130 Q54,114 56,98 Q56,114 57,130 Z"/>
+    <path fill="#4caf50" d="M53,130 Q50,118 48,106 Q51,118 55,130 Z"/>
+    <path fill="#4caf50" d="M57,130 Q59,117 63,104 Q61,117 59,130 Z"/>
+    <path fill="#81c784" d="M61,130 Q59,121 59,112 Q61,121 63,130 Z"/>
+
+    <!-- centre-left cluster -->
+    <path fill="#66bb6a" d="M76,130 Q75,115 77,99 Q78,115 78,130 Z"/>
+    <path fill="#4caf50" d="M74,130 Q71,118 69,105 Q72,118 76,130 Z"/>
+    <path fill="#4caf50" d="M78,130 Q80,118 84,106 Q82,118 80,130 Z"/>
+
+    <!-- centre cluster -->
+    <path fill="#66bb6a" d="M97,130 Q96,114 98,97 Q99,114 99,130 Z"/>
+    <path fill="#4caf50" d="M94,130 Q91,117 89,104 Q92,117 96,130 Z"/>
+    <path fill="#4caf50" d="M99,130 Q101,117 105,103 Q103,117 101,130 Z"/>
+    <path fill="#81c784" d="M101,130 Q100,121 100,112 Q102,121 103,130 Z"/>
+
+    <!-- centre-right cluster -->
+    <path fill="#66bb6a" d="M116,130 Q115,115 117,99 Q118,115 118,130 Z"/>
+    <path fill="#4caf50" d="M114,130 Q111,118 109,105 Q112,118 116,130 Z"/>
+    <path fill="#4caf50" d="M118,130 Q120,118 124,106 Q122,118 120,130 Z"/>
+
+    <!-- right cluster -->
+    <path fill="#66bb6a" d="M137,130 Q136,116 138,101 Q139,116 139,130 Z"/>
+    <path fill="#4caf50" d="M135,130 Q132,119 130,107 Q133,119 137,130 Z"/>
+    <path fill="#4caf50" d="M139,130 Q141,118 145,105 Q143,118 141,130 Z"/>
+    <path fill="#81c784" d="M142,130 Q141,122 141,113 Q143,122 144,130 Z"/>
+
+    <!-- right-far cluster -->
+    <path fill="#66bb6a" d="M158,130 Q157,117 159,103 Q160,117 160,130 Z"/>
+    <path fill="#4caf50" d="M156,130 Q153,119 151,108 Q154,119 158,130 Z"/>
+    <path fill="#4caf50" d="M160,130 Q162,118 166,106 Q164,118 162,130 Z"/>
+
+    <!-- far right cluster -->
+    <path fill="#4caf50" d="M174,130 Q174,120 176,109 Q177,120 176,130 Z"/>
+    <path fill="#66bb6a" d="M172,130 Q169,117 168,104 Q171,117 174,130 Z"/>
+    <path fill="#4caf50" d="M176,130 Q177,121 180,112 Q179,121 178,130 Z"/>
+  </g>
+
+  <!-- Border ring -->
+  <circle cx="100" cy="100" r="96" fill="none" stroke="#2d5a27" stroke-width="4"/>
+</svg>

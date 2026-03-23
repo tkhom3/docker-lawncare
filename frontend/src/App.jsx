@@ -31,7 +31,7 @@ export default function App() {
   return (
     <div className="app">
       <div className="header">
-        <h1>🌱 Lawncare Dashboard</h1>
+        <h1><img src="/logo.svg" alt="Lawncare" className="header-logo" />Lawncare Dashboard</h1>
         <p>Weather tracking & grass growth potential</p>
       </div>
       <div className="tabs">
