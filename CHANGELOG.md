@@ -1,3 +1,9 @@
+## [1.5.2](https://github.com/tkhom3/docker-lawncare/compare/v1.5.1...v1.5.2) (2026-03-23)
+
+### 🐛 Bug Fixes
+
+* fix missing module error ([77442b4](https://github.com/tkhom3/docker-lawncare/commit/77442b49125786c0d9f40fda13dd85f19bc274f0))
+
 ## [1.5.1](https://github.com/tkhom3/docker-lawncare/compare/v1.5.0...v1.5.1) (2026-03-23)
 
 ### 🐛 Bug Fixes
