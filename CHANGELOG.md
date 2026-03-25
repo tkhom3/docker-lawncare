@@ -1,3 +1,18 @@
+## [1.6.0](https://github.com/tkhom3/docker-lawncare/compare/v1.5.2...v1.6.0) (2026-03-25)
+
+### ✨ Features
+
+* show lb per 1k sqft ([d355934](https://github.com/tkhom3/docker-lawncare/commit/d355934a77ca56706b02b4262d7b1ff1602f3a4d))
+
+### 🐛 Bug Fixes
+
+* adjust for iron ([4c00ce6](https://github.com/tkhom3/docker-lawncare/commit/4c00ce6f28121291e6c39eec1f88d0dc57dc3482))
+
+### 🔧 Chores
+
+* add logo ([0d4e5e6](https://github.com/tkhom3/docker-lawncare/commit/0d4e5e6dce8afa1b6b0d70522603cd3e629ec1f4))
+* add png version ([a7080d7](https://github.com/tkhom3/docker-lawncare/commit/a7080d7c342273581ded002ee29dcf104378c20e))
+
 ## [1.5.2](https://github.com/tkhom3/docker-lawncare/compare/v1.5.1...v1.5.2) (2026-03-23)
 
 ### 🐛 Bug Fixes
