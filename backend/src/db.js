@@ -118,6 +118,9 @@ const migrations = [
 
   // v8 — link planned_work to the work_log entry created on completion
   () => db.exec('ALTER TABLE planned_work ADD COLUMN work_log_id INTEGER REFERENCES work_log(id)'),
+
+  // v9 — add iron (DTPA) to soil_tests for iron recommendation adjustment
+  () => db.exec('ALTER TABLE soil_tests ADD COLUMN fe_ppm REAL'),
 ];
 
 // ---------------------------------------------------------------------------
