@@ -25,7 +25,7 @@ router.get('/', (req, res) => {
 
 // POST /api/soiltest
 router.post('/', (req, res) => {
-  const { date, notes, ph, om_pct, p_ppm, k_ppm } = req.body;
+  const { date, notes, ph, om_pct, p_ppm, k_ppm, fe_ppm } = req.body;
 
   if (!date) return res.status(400).json({ error: 'date is required' });
   if (!isValidDate(date)) return res.status(400).json({ error: 'date must be in YYYY-MM-DD format' });
@@ -33,21 +33,23 @@ router.post('/', (req, res) => {
   if (!isValidNumber(ph) || (ph !== '' && ph !== null && ph !== undefined && parseFloat(ph) > 14)) {
     return res.status(400).json({ error: 'ph must be between 0 and 14' });
   }
-  if (!isValidNumber(om_pct) || !isValidNumber(p_ppm) || !isValidNumber(k_ppm)) {
-    return res.status(400).json({ error: 'om_pct, p_ppm, and k_ppm must be non-negative numbers' });
+  if (!isValidNumber(om_pct) || !isValidNumber(p_ppm) || !isValidNumber(k_ppm) || !isValidNumber(fe_ppm)) {
+    return res.status(400).json({ error: 'om_pct, p_ppm, k_ppm, and fe_ppm must be non-negative numbers' });
   }
 
   try {
     const stmt = db.prepare(
-      'INSERT INTO soil_tests (date, notes, ph, om_pct, p_ppm, k_ppm) VALUES (?, ?, ?, ?, ?, ?)'
+      'INSERT INTO soil_tests (date, notes, ph, om_pct, p_ppm, k_ppm, fe_ppm) VALUES (?, ?, ?, ?, ?, ?, ?)'
     );
+    const toNum = v => (v !== '' && v !== null && v !== undefined ? parseFloat(v) : null);
     const result = stmt.run(
       date,
       notes || null,
-      ph !== '' && ph !== null && ph !== undefined ? parseFloat(ph) : null,
-      om_pct !== '' && om_pct !== null && om_pct !== undefined ? parseFloat(om_pct) : null,
-      p_ppm !== '' && p_ppm !== null && p_ppm !== undefined ? parseFloat(p_ppm) : null,
-      k_ppm !== '' && k_ppm !== null && k_ppm !== undefined ? parseFloat(k_ppm) : null,
+      toNum(ph),
+      toNum(om_pct),
+      toNum(p_ppm),
+      toNum(k_ppm),
+      toNum(fe_ppm),
     );
     const newEntry = db.prepare('SELECT * FROM soil_tests WHERE id = ?').get(result.lastInsertRowid);
     res.status(201).json(newEntry);

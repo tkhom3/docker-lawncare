@@ -174,6 +174,26 @@ function applySoilAdjustments(targets, lawnSqft, soilTest) {
     }
   }
 
+  // Iron: DTPA Fe thresholds — < 4.5 ppm low (full), 4.5–10 ppm adequate (50%), ≥ 10 ppm high (skip)
+  if (soilTest.fe_ppm !== null && soilTest.fe_ppm !== undefined && targets.fe_target !== null) {
+    const ppm = soilTest.fe_ppm
+    const multiplier = ppm < 4.5 ? 1.0 : ppm < 10 ? 0.5 : 0.0
+    if (multiplier !== 1.0) {
+      result.fe_target = targets.fe_target * multiplier
+      result.adjusted.fe = true
+    }
+  }
+
+  // Sulfur: pH thresholds — < 5.5 skip (too acidic), 5.5–6.5 half rate, ≥ 6.5 full rate
+  if (soilTest.ph !== null && soilTest.ph !== undefined && targets.s_target !== null) {
+    const ph = soilTest.ph
+    const multiplier = ph < 5.5 ? 0.0 : ph < 6.5 ? 0.5 : 1.0
+    if (multiplier !== 1.0) {
+      result.s_target = targets.s_target * multiplier
+      result.adjusted.s = true
+    }
+  }
+
   return result
 }
 
@@ -197,6 +217,7 @@ const EMPTY_SOIL_FORM = {
   om_pct: '',
   p_ppm: '',
   k_ppm: '',
+  fe_ppm: '',
 }
 
 const EMPTY_PLAN_FORM = {
@@ -642,13 +663,15 @@ export default function WorkLog() {
               adjustedTargets.n_target && { label: 'Nitrogen',   symbol: 'N',  total: n_total,  target: adjustedTargets.n_target,  adjusted: adjustedTargets.adjusted.n,  plannedTotal: planned.n_total },
               adjustedTargets.p_target !== null && adjustedTargets.p_target > 0 && { label: 'Phosphorus', symbol: 'P',  total: p_total,  target: adjustedTargets.p_target,  adjusted: adjustedTargets.adjusted.p,  plannedTotal: planned.p_total },
               adjustedTargets.k_target !== null && adjustedTargets.k_target > 0 && { label: 'Potassium',  symbol: 'K',  total: k_total,  target: adjustedTargets.k_target,  adjusted: adjustedTargets.adjusted.k,  plannedTotal: planned.k_total },
-              adjustedTargets.fe_target && { label: 'Iron',      symbol: 'Fe', total: fe_total, target: adjustedTargets.fe_target, adjusted: false,                        plannedTotal: planned.fe_total },
-              adjustedTargets.s_target && { label: 'Sulfur',     symbol: 'S',  total: s_total,  target: adjustedTargets.s_target,  adjusted: false,                        plannedTotal: planned.s_total },
+              adjustedTargets.fe_target && { label: 'Iron',      symbol: 'Fe', total: fe_total, target: adjustedTargets.fe_target, adjusted: adjustedTargets.adjusted.fe,  plannedTotal: planned.fe_total },
+              adjustedTargets.s_target && { label: 'Sulfur',     symbol: 'S',  total: s_total,  target: adjustedTargets.s_target,  adjusted: adjustedTargets.adjusted.s,  plannedTotal: planned.s_total },
             ].filter(Boolean)
 
             const skipped = [
               adjustedTargets.adjusted.p && adjustedTargets.p_target === 0 && 'P (soil level high)',
               adjustedTargets.adjusted.k && adjustedTargets.k_target === 0 && 'K (soil level high)',
+              adjustedTargets.adjusted.fe && adjustedTargets.fe_target === 0 && 'Fe (soil level high)',
+              adjustedTargets.adjusted.s && adjustedTargets.s_target === 0 && 'S (soil pH too low)',
             ].filter(Boolean)
 
             return (
@@ -894,6 +917,21 @@ export default function WorkLog() {
               </div>
             </div>
 
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="fe_ppm">Iron — DTPA (ppm)</label>
+                <input
+                  id="fe_ppm"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  placeholder="e.g. 8.5"
+                  value={soilForm.fe_ppm}
+                  onChange={(e) => setSoilForm({ ...soilForm, fe_ppm: e.target.value })}
+                />
+              </div>
+            </div>
+
             <div className="form-group">
               <label htmlFor="soil-notes">Notes</label>
               <textarea
@@ -905,7 +943,7 @@ export default function WorkLog() {
             </div>
 
             <div style={{ fontSize: '0.78rem', color: '#6b7280', marginBottom: '12px' }}>
-              P and K readings adjust yearly targets. Organic matter adjusts nitrogen target.
+              P and K adjust yearly targets. Organic matter adjusts nitrogen. Iron (DTPA) adjusts iron target when tested.
             </div>
 
             <button type="submit" className="submit-btn" disabled={submitting}>
@@ -960,6 +998,7 @@ export default function WorkLog() {
                   <th>OM (%)</th>
                   <th>P (ppm)</th>
                   <th>K (ppm)</th>
+                  <th>Fe DTPA (ppm)</th>
                   <th>Notes</th>
                   <th></th>
                 </tr>
@@ -972,6 +1011,7 @@ export default function WorkLog() {
                     <td className="wl-td-num">{test.om_pct ?? '—'}</td>
                     <td className="wl-td-num">{test.p_ppm ?? '—'}</td>
                     <td className="wl-td-num">{test.k_ppm ?? '—'}</td>
+                    <td className="wl-td-num">{test.fe_ppm ?? '—'}</td>
                     <td style={{ fontSize: '0.82rem', color: '#6b7280' }}>{test.notes || '—'}</td>
                     <td><button className="delete-btn" onClick={() => handleDeleteSoil(test.id)}>Delete</button></td>
                   </tr>

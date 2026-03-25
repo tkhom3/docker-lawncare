@@ -103,10 +103,10 @@ export default function Settings() {
       fe: 0.3 * thousand,
       s: 1 * thousand,
     }
-    const adjusted = { n: false, p: false, k: false }
+    const adjusted = { n: false, p: false, k: false, fe: false, s: false }
 
     if (latestSoilTest) {
-      const { p_ppm, k_ppm, om_pct } = latestSoilTest
+      const { p_ppm, k_ppm, om_pct, fe_ppm, ph } = latestSoilTest
 
       if (p_ppm != null) {
         const m = p_ppm < 15 ? 1.0 : p_ppm < 30 ? 0.75 : p_ppm < 50 ? 0.5 : 0.0
@@ -119,6 +119,16 @@ export default function Settings() {
       if (om_pct != null) {
         const m = om_pct > 5 ? 0.8 : om_pct > 3 ? 0.9 : 1.0
         if (m !== 1.0) { base.n *= m; adjusted.n = true }
+      }
+      // Iron: DTPA Fe thresholds — < 4.5 ppm low (full), 4.5–10 ppm adequate (50%), ≥ 10 ppm high (skip)
+      if (fe_ppm != null) {
+        const m = fe_ppm < 4.5 ? 1.0 : fe_ppm < 10 ? 0.5 : 0.0
+        if (m !== 1.0) { base.fe *= m; adjusted.fe = true }
+      }
+      // Sulfur: pH thresholds — < 5.5 skip (too acidic), 5.5–6.5 half rate, ≥ 6.5 full rate
+      if (ph != null) {
+        const m = ph < 5.5 ? 0.0 : ph < 6.5 ? 0.5 : 1.0
+        if (m !== 1.0) { base.s *= m; adjusted.s = true }
       }
     }
 
@@ -222,7 +232,7 @@ export default function Settings() {
               return <div className="settings-note">Enter your lawn size above to see nutrient recommendations.</div>
             }
             const { adjusted } = recommendations
-            const anySoilAdjusted = adjusted.n || adjusted.p || adjusted.k
+            const anySoilAdjusted = adjusted.n || adjusted.p || adjusted.k || adjusted.fe || adjusted.s
             return (
               <div className="recommendations-section">
                 <div className="recommendations-header">
@@ -245,8 +255,8 @@ export default function Settings() {
                     { key: 'n_target', label: 'Nitrogen (N)',   adj: adjusted.n },
                     { key: 'p_target', label: 'Phosphorus (P)', adj: adjusted.p },
                     { key: 'k_target', label: 'Potassium (K)',  adj: adjusted.k },
-                    { key: 'fe_target', label: 'Iron (Fe)',     adj: false },
-                    { key: 's_target', label: 'Sulfur (S)',     adj: false },
+                    { key: 'fe_target', label: 'Iron (Fe)',     adj: adjusted.fe },
+                    { key: 's_target', label: 'Sulfur (S)',     adj: adjusted.s },
                   ].map(({ key, label, adj }) => (
                     <div key={key} className="nutrient-input-pair">
                       <div className="nutrient-input-header">
