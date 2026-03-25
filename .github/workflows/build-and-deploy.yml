@@ -42,7 +42,7 @@ jobs:
       - name: Release
         id: semantic
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.SEMANTIC_RELEASE_PAT }}
         run: |
           OUTPUT=$(npx semantic-release 2>&1 | tee /dev/stderr)
           VERSION=$(echo "$OUTPUT" | grep -oP 'Published release \K[0-9]+\.[0-9]+\.[0-9]+' || true)
