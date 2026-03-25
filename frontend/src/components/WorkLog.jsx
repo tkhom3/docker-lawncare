@@ -246,6 +246,14 @@ function nutrientLbs(entry, lbsField) {
   }
 }
 
+function NutrientCell({ totalLbs, lawnSqft }) {
+  if (totalLbs == null) return <span style={{ color: '#d1d5db' }}>—</span>
+  const per1k = lawnSqft ? totalLbs / (lawnSqft / 1000) : null
+  const display = per1k != null ? per1k.toFixed(2) : totalLbs.toFixed(2)
+  const tooltip = per1k != null ? `${totalLbs.toFixed(2)} lbs total` : null
+  return <span title={tooltip} style={{ cursor: tooltip ? 'help' : undefined }}>{display}</span>
+}
+
 function NutrientDots({ n, p, k, fe, s }) {
   const items = [['N', n, '#2d7a27'], ['P', p, '#d97706'], ['K', k, '#2563eb'], ['Fe', fe, '#9a3412'], ['S', s, '#ca8a04']]
   const active = items.filter(([, v]) => v != null)
@@ -265,6 +273,7 @@ function NutrientDots({ n, p, k, fe, s }) {
 // ── Work History Table ───────────────────────────────────────────────────────
 
 function HistoryTable({ entries, lawnSqft, onDelete }) {
+  const nutHeader = lawnSqft ? 'lbs/1k' : 'lbs'
   return (
     <div style={{ overflowX: 'auto' }}>
       <table className="wl-table">
@@ -273,7 +282,11 @@ function HistoryTable({ entries, lawnSqft, onDelete }) {
             <th>Date</th>
             <th>Product</th>
             <th>lbs</th>
-            <th>N</th><th>P</th><th>K</th><th>Fe</th><th>S</th>
+            <th title={`N (${nutHeader})`}>N</th>
+            <th title={`P (${nutHeader})`}>P</th>
+            <th title={`K (${nutHeader})`}>K</th>
+            <th title={`Fe (${nutHeader})`}>Fe</th>
+            <th title={`S (${nutHeader})`}>S</th>
             <th>Spreader</th>
             <th></th>
           </tr>
@@ -292,7 +305,7 @@ function HistoryTable({ entries, lawnSqft, onDelete }) {
                 <td className="wl-td-num">{lbs ? lbs.toFixed(1) : '—'}</td>
                 {['n','p','k','fe','s'].map(key => (
                   <td key={key} className="wl-td-num">
-                    {nuts[key] != null ? <span className="wl-nut-chip wl-nut-chip--{key}">{nuts[key].toFixed(2)}</span> : <span style={{ color: '#d1d5db' }}>—</span>}
+                    <NutrientCell totalLbs={nuts[key]} lawnSqft={lawnSqft} />
                   </td>
                 ))}
                 <td style={{ fontSize: '0.82rem', color: '#6b7280' }}>{entry.spreader_setting || '—'}</td>
@@ -310,6 +323,7 @@ function HistoryTable({ entries, lawnSqft, onDelete }) {
 
 function PlanTable({ entries, lawnSqft, editingId, editForm, setEditForm, submitting, onToggle, onCancelEdit, onEditSubmit, onEdit, onDelete }) {
   const COL_COUNT = 11
+  const nutHeader = lawnSqft ? 'lbs/1k' : 'lbs'
   return (
     <div style={{ overflowX: 'auto' }}>
       <table className="wl-table">
@@ -319,7 +333,11 @@ function PlanTable({ entries, lawnSqft, editingId, editForm, setEditForm, submit
             <th>Date</th>
             <th>Product</th>
             <th>lbs</th>
-            <th>N</th><th>P</th><th>K</th><th>Fe</th><th>S</th>
+            <th title={`N (${nutHeader})`}>N</th>
+            <th title={`P (${nutHeader})`}>P</th>
+            <th title={`K (${nutHeader})`}>K</th>
+            <th title={`Fe (${nutHeader})`}>Fe</th>
+            <th title={`S (${nutHeader})`}>S</th>
             <th>Spreader</th>
             <th></th>
           </tr>
@@ -399,7 +417,7 @@ function PlanTable({ entries, lawnSqft, editingId, editForm, setEditForm, submit
                 <td className="wl-td-num">{lbs ? lbs.toFixed(1) : '—'}</td>
                 {['n','p','k','fe','s'].map(key => (
                   <td key={key} className="wl-td-num">
-                    {nuts[key] != null ? nuts[key].toFixed(2) : <span style={{ color: '#d1d5db' }}>—</span>}
+                    <NutrientCell totalLbs={nuts[key]} lawnSqft={lawnSqft} />
                   </td>
                 ))}
                 <td style={{ fontSize: '0.82rem', color: '#6b7280' }}>{entry.spreader_setting || '—'}</td>
