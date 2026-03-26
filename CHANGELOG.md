@@ -1,3 +1,9 @@
+## [1.6.1](https://github.com/tkhom3/docker-lawncare/compare/v1.6.0...v1.6.1) (2026-03-26)
+
+### 🐛 Bug Fixes
+
+* bump requests from 2.32.5 to 2.33.0 in /collector ([adbc618](https://github.com/tkhom3/docker-lawncare/commit/adbc618dc3592f05dda265d2f7ca70f0772d1b3d))
+
 ## [1.6.0](https://github.com/tkhom3/docker-lawncare/compare/v1.5.2...v1.6.0) (2026-03-25)
 
 ### ✨ Features
