@@ -26,7 +26,7 @@ router.get('/history', (req, res) => {
 // GET /api/weather/forecast
 router.get('/forecast', (req, res) => {
   try {
-    const rows = db.prepare('SELECT * FROM weather_forecast ORDER BY date ASC').all();
+    const rows = db.prepare("SELECT * FROM weather_forecast WHERE date >= date('now') ORDER BY date ASC").all();
     res.json(rows);
   } catch (err) {
     console.error('Error fetching weather forecast:', err);
