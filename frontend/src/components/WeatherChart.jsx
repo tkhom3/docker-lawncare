@@ -82,9 +82,16 @@ function CardsView({ rows }) {
 // ── View C: Chart ────────────────────────────────────────────────────────────
 function ChartView({ rows }) {
   const today = new Date().toISOString().split('T')[0]
+  const chartData = rows.map(r => ({
+    ...r,
+    temp_high_hist: r.type === 'history' ? r.temp_high : null,
+    temp_low_hist:  r.type === 'history' ? r.temp_low  : null,
+    temp_high_fore: r.type === 'forecast' ? r.temp_high : null,
+    temp_low_fore:  r.type === 'forecast' ? r.temp_low  : null,
+  }))
   return (
     <ResponsiveContainer width="100%" height={280}>
-      <ComposedChart data={rows} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+      <ComposedChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
         <XAxis dataKey="date" tickFormatter={formatDate} tick={{ fontSize: 11 }} />
         <YAxis yAxisId="temp" unit="°F" tick={{ fontSize: 11 }} />
         <YAxis yAxisId="precip" orientation="right" hide />
@@ -95,11 +102,19 @@ function ChartView({ rows }) {
           }}
           labelFormatter={label => formatFull(label)}
         />
-        <Legend />
+        <Legend
+          payload={[
+            { value: 'High', type: 'line', color: '#ef4444' },
+            { value: 'Low',  type: 'line', color: '#3b82f6' },
+            { value: 'Precip', type: 'square', color: '#93c5fd' },
+          ]}
+        />
         {today && <ReferenceLine yAxisId="temp" x={today} stroke="#9ca3af" strokeDasharray="4 3" label={{ value: 'Today', position: 'insideTopRight', fontSize: 10, fill: '#9ca3af' }} />}
         <Bar yAxisId="precip" dataKey="precip" name="Precip" fill="#93c5fd" opacity={0.7} />
-        <Line yAxisId="temp" type="monotone" dataKey="temp_high" name="High" stroke="#ef4444" dot={false} strokeWidth={2} />
-        <Line yAxisId="temp" type="monotone" dataKey="temp_low" name="Low" stroke="#3b82f6" dot={false} strokeWidth={2} />
+        <Line yAxisId="temp" type="monotone" dataKey="temp_high_hist" name="High"         stroke="#ef4444" dot={false} strokeWidth={2} connectNulls={false} legendType="none" />
+        <Line yAxisId="temp" type="monotone" dataKey="temp_high_fore" name="High Forecast" stroke="#ef4444" dot={false} strokeWidth={2} strokeDasharray="5 3" connectNulls={false} legendType="none" />
+        <Line yAxisId="temp" type="monotone" dataKey="temp_low_hist"  name="Low"          stroke="#3b82f6" dot={false} strokeWidth={2} connectNulls={false} legendType="none" />
+        <Line yAxisId="temp" type="monotone" dataKey="temp_low_fore"  name="Low Forecast"  stroke="#3b82f6" dot={false} strokeWidth={2} strokeDasharray="5 3" connectNulls={false} legendType="none" />
       </ComposedChart>
     </ResponsiveContainer>
   )
@@ -135,13 +150,15 @@ export default function WeatherChart() {
         setHistory(sorted.slice(-30))
 
         const last7 = sorted.slice(-7).map(r => ({ ...r, type: 'history' }))
-        const fore = foreData.map(r => ({
-          ...r,
-          temp_high: cToF(r.temp_high),
-          temp_low: cToF(r.temp_low),
-          precip: mmToIn(r.precip),
-          type: 'forecast',
-        }))
+        const fore = foreData
+          .map(r => ({
+            ...r,
+            temp_high: cToF(r.temp_high),
+            temp_low: cToF(r.temp_low),
+            precip: mmToIn(r.precip),
+            type: 'forecast',
+          }))
+          .sort((a, b) => a.date.localeCompare(b.date))
         setCombinedRows([...last7, ...fore.slice(0, 7)])
       } catch (err) {
         console.error('Error fetching weather data:', err)
