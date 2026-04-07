@@ -1,3 +1,9 @@
+## [1.6.4](https://github.com/tkhom3/docker-lawncare/compare/v1.6.3...v1.6.4) (2026-04-07)
+
+### 🐛 Bug Fixes
+
+* purge old forecast data ([648efcc](https://github.com/tkhom3/docker-lawncare/commit/648efcc9c9885ec6b8a24f0c5e5d9584c5553374))
+
 ## [1.6.3](https://github.com/tkhom3/docker-lawncare/compare/v1.6.2...v1.6.3) (2026-04-07)
 
 ### 🐛 Bug Fixes
