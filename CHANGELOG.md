@@ -1,3 +1,13 @@
+## [1.6.2](https://github.com/tkhom3/docker-lawncare/compare/v1.6.1...v1.6.2) (2026-04-07)
+
+### 🐛 Bug Fixes
+
+* recent and forecast chart not displaying correctly ([78fd069](https://github.com/tkhom3/docker-lawncare/commit/78fd0692df5f82d068eb33bad76440cb300a90a0))
+
+### 🔧 Chores
+
+* bump docker/login-action from 4.0.0 to 4.1.0 ([17ba60a](https://github.com/tkhom3/docker-lawncare/commit/17ba60afb57966e577ba8f3890dd2e916fa1ef75))
+
 ## [1.6.1](https://github.com/tkhom3/docker-lawncare/compare/v1.6.0...v1.6.1) (2026-03-26)
 
 ### 🐛 Bug Fixes
