@@ -308,6 +308,7 @@ def fetch_forecast():
 
         conn = get_db()
         try:
+            conn.execute("DELETE FROM weather_forecast WHERE date < date('now')")
             inserted = 0
             for entry in values[:8]:
                 raw_dt = entry.get('datetime')

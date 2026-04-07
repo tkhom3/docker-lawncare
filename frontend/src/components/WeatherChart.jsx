@@ -79,15 +79,32 @@ function CardsView({ rows }) {
   )
 }
 
+function ChartTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null
+  const seen = new Set()
+  const items = payload.filter(({ name }) => !seen.has(name) && seen.add(name))
+  return (
+    <div style={{ background: 'white', border: '1px solid #e5e7eb', padding: '8px 12px', borderRadius: 4, fontSize: 13 }}>
+      <p style={{ fontWeight: 600, marginBottom: 4 }}>{formatFull(label)}</p>
+      {items.map(({ name, value, color }) => (
+        <p key={name} style={{ color, margin: '2px 0' }}>
+          {name} : {name === 'Precip' ? `${value?.toFixed(2)}"` : `${value}°F`}
+        </p>
+      ))}
+    </div>
+  )
+}
+
 // ── View C: Chart ────────────────────────────────────────────────────────────
 function ChartView({ rows }) {
   const today = new Date().toISOString().split('T')[0]
-  const chartData = rows.map(r => ({
+  const lastHistIdx = rows.findLastIndex(r => r.type === 'history')
+  const chartData = rows.map((r, i) => ({
     ...r,
     temp_high_hist: r.type === 'history' ? r.temp_high : null,
     temp_low_hist:  r.type === 'history' ? r.temp_low  : null,
-    temp_high_fore: r.type === 'forecast' ? r.temp_high : null,
-    temp_low_fore:  r.type === 'forecast' ? r.temp_low  : null,
+    temp_high_fore: r.type === 'forecast' || i === lastHistIdx ? r.temp_high : null,
+    temp_low_fore:  r.type === 'forecast' || i === lastHistIdx ? r.temp_low  : null,
   }))
   return (
     <ResponsiveContainer width="100%" height={280}>
@@ -95,13 +112,7 @@ function ChartView({ rows }) {
         <XAxis dataKey="date" tickFormatter={formatDate} tick={{ fontSize: 11 }} />
         <YAxis yAxisId="temp" unit="°F" tick={{ fontSize: 11 }} />
         <YAxis yAxisId="precip" orientation="right" hide />
-        <Tooltip
-          formatter={(value, name) => {
-            if (name === 'Precip') return [`${value?.toFixed(2)}"`, name]
-            return [`${value}°F`, name]
-          }}
-          labelFormatter={label => formatFull(label)}
-        />
+        <Tooltip content={<ChartTooltip />} />
         <Legend
           payload={[
             { value: 'High', type: 'line', color: '#ef4444' },
@@ -111,10 +122,10 @@ function ChartView({ rows }) {
         />
         {today && <ReferenceLine yAxisId="temp" x={today} stroke="#9ca3af" strokeDasharray="4 3" label={{ value: 'Today', position: 'insideTopRight', fontSize: 10, fill: '#9ca3af' }} />}
         <Bar yAxisId="precip" dataKey="precip" name="Precip" fill="#93c5fd" opacity={0.7} />
-        <Line yAxisId="temp" type="monotone" dataKey="temp_high_hist" name="High"         stroke="#ef4444" dot={false} strokeWidth={2} connectNulls={false} legendType="none" />
-        <Line yAxisId="temp" type="monotone" dataKey="temp_high_fore" name="High Forecast" stroke="#ef4444" dot={false} strokeWidth={2} strokeDasharray="5 3" connectNulls={false} legendType="none" />
-        <Line yAxisId="temp" type="monotone" dataKey="temp_low_hist"  name="Low"          stroke="#3b82f6" dot={false} strokeWidth={2} connectNulls={false} legendType="none" />
-        <Line yAxisId="temp" type="monotone" dataKey="temp_low_fore"  name="Low Forecast"  stroke="#3b82f6" dot={false} strokeWidth={2} strokeDasharray="5 3" connectNulls={false} legendType="none" />
+        <Line yAxisId="temp" type="monotone" dataKey="temp_high_hist" name="High" stroke="#ef4444" dot={false} strokeWidth={2} connectNulls={false} legendType="none" />
+        <Line yAxisId="temp" type="monotone" dataKey="temp_low_hist"  name="Low"  stroke="#3b82f6" dot={false} strokeWidth={2} connectNulls={false} legendType="none" />
+        <Line yAxisId="temp" type="monotone" dataKey="temp_high_fore" name="High" stroke="#ef4444" dot={false} strokeWidth={2} strokeDasharray="5 3" connectNulls={false} legendType="none" />
+        <Line yAxisId="temp" type="monotone" dataKey="temp_low_fore"  name="Low"  stroke="#3b82f6" dot={false} strokeWidth={2} strokeDasharray="5 3" connectNulls={false} legendType="none" />
       </ComposedChart>
     </ResponsiveContainer>
   )
