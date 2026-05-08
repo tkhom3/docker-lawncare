@@ -1,83 +1,18 @@
-name: Release and Deploy
+name: Create Release, Build and Deploy Image
 
 on:
-  push:
+ push:
     branches:
-      - main
+      - 'main'
 
 permissions:
-  contents: write
   actions: write
+  contents: write
+  issues: write
+  id-token: write
+  pull-requests: write
 
 jobs:
-  release:
-    name: Release
-    runs-on: ubuntu-latest
-    outputs:
-      released: ${{ steps.semantic.outputs.new_release_published }}
-      version: ${{ steps.semantic.outputs.new_release_version }}
-    permissions:
-      contents: write # to be able to publish a GitHub release
-      issues: write # to be able to comment on released issues
-      pull-requests: write # to be able to comment on released pull requests
-      id-token: write # to enable use of OIDC for trusted publishing and npm provenance
-    steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          fetch-depth: 0
-      - name: Setup Node.js
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-        with:
-          node-version: "lts/*"
-      - name: Install dependencies
-        run: npm install
-      - name: Upload npm debug logs on failure
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: npm-logs
-          path: /root/.npm/_logs/
-          retention-days: 7
-      - name: Release
-        id: semantic
-        env:
-          GITHUB_TOKEN: ${{ secrets.SEMANTIC_RELEASE_PAT }}
-        run: |
-          OUTPUT=$(npx semantic-release 2>&1 | tee /dev/stderr)
-          VERSION=$(echo "$OUTPUT" | grep -oP 'Published release \K[0-9]+\.[0-9]+\.[0-9]+' || true)
-          if [ -n "$VERSION" ]; then
-            echo "new_release_published=true" >> $GITHUB_OUTPUT
-            echo "new_release_version=$VERSION" >> $GITHUB_OUTPUT
-          else
-            echo "new_release_published=false" >> $GITHUB_OUTPUT
-          fi
-
-  build-and-push:
-    needs: release
-    if: ${{ needs.release.outputs.released == 'true' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_PASSWORD }}
-
-      - name: Build and push to Docker Hub
-        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
-        with:
-          context: .
-          push: true
-          tags: |
-            ${{ github.repository }}:latest
-            ${{ github.repository }}:v${{ needs.release.outputs.version }}
-            ${{ github.repository }}:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+  build-and-release-image:
+    uses: tkhom3/gha-workflows/.github/workflows/build-and-push-image.yml@bf11820fb9c21e7fd326869bf434923be9450319
+    secrets: inherit
