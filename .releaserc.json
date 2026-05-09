@@ -40,67 +40,6 @@
           }
         ]
       }
-    ],
-    [
-      "@semantic-release/release-notes-generator",
-      {
-        "preset": "conventionalcommits",
-        "presetConfig": {
-          "types": [
-            {
-              "type": "feat",
-              "section": "✨ Features"
-            },
-            {
-              "type": "fix",
-              "section": "🐛 Bug Fixes"
-            },
-            {
-              "type": "perf",
-              "section": "⚡ Performance"
-            },
-            {
-              "type": "refactor",
-              "section": "♻️ Refactoring"
-            },
-            {
-              "type": "docs",
-              "section": "📚 Documentation"
-            },
-            {
-              "type": "style",
-              "section": "🎨 Styling"
-            },
-            {
-              "type": "test",
-              "section": "✅ Tests"
-            },
-            {
-              "type": "chore",
-              "section": "🔧 Chores"
-            }
-          ]
-        }
-      }
-    ],
-    [
-      "@semantic-release/changelog",
-      {
-        "changelogFile": "CHANGELOG.md"
-      }
-    ],
-    [
-      "@semantic-release/git",
-      {
-        "assets": ["package.json", "backend/package.json", "frontend/package.json", "CHANGELOG.md"],
-        "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
-      }
-    ],
-    [
-      "@semantic-release/github",
-      {
-        "addReleases": "top"
-      }
     ]
   ]
 }

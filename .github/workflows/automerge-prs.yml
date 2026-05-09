@@ -1,0 +1,13 @@
+name: Automerge PR
+
+on:
+  pull_request:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  build-image:
+    uses: tkhom3/gha-workflows/.github/workflows/automerge-prs.yml@5f38a9b813cea2d0b872138c064aa7e39d481995 # v1.0.3
+    secrets: inherit
