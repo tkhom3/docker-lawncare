@@ -1,9 +1,9 @@
 name: Create Release, Build and Deploy Image
 
 on:
- push:
+  push:
     branches:
-      - 'main'
+      - "main"
 
 permissions:
   actions: write
@@ -14,5 +14,5 @@ permissions:
 
 jobs:
   build-and-release-image:
-    uses: tkhom3/gha-workflows/.github/workflows/build-and-push-image.yml@bf11820fb9c21e7fd326869bf434923be9450319
+    uses: tkhom3/gha-workflows/.github/workflows/build-and-push-image.yml@5f38a9b813cea2d0b872138c064aa7e39d481995 # v1.0.3
     secrets: inherit

@@ -6,7 +6,16 @@ updates:
     schedule:
       interval: "weekly"
     commit-message:
-      prefix: "chore"
+      prefix: "chore: "
+
+  - package-ecosystem: "docker"
+    # Look for a `Dockerfile` in the `root` directory
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "fix: "
 
   # All npm dependencies (root workspace covers backend + frontend) — fix prefix, triggers patch release
   - package-ecosystem: "npm"
@@ -14,7 +23,15 @@ updates:
     schedule:
       interval: "weekly"
     commit-message:
-      prefix: "fix"
+      prefix: "fix: "
+
+  - package-ecosystem: "devcontainers"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore: "
 
   # Python collector dependencies — fix prefix, triggers patch release
   - package-ecosystem: "uv"
@@ -22,4 +39,4 @@ updates:
     schedule:
       interval: "weekly"
     commit-message:
-      prefix: "fix"
+      prefix: "fix: "
