@@ -8,4 +8,4 @@ permissions:
 
 jobs:
   build-image:
-    uses: tkhom3/gha-workflows/.github/workflows/build-image-pr.yml@f03247460173d72146e5c9df8fa09dde94325b5d # v1.0.4
+    uses: tkhom3/gha-workflows/.github/workflows/build-image-pr.yml@baac94b3959e9289608ba8d2a5675965462b1461 # v1.0.7
