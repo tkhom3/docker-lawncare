@@ -4,6 +4,6 @@ version = "0.1.0"
 description = "Weather data collector for the lawncare dashboard"
 requires-python = ">=3.14"
 dependencies = [
-    "requests==2.33.1",
+    "requests==2.34.2",
     "schedule==1.2.2",
 ]
