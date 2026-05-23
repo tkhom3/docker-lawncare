@@ -9,7 +9,7 @@
     "build:frontend": "cd frontend && vite build"
   },
   "dependencies": {
-    "better-sqlite3": "^12.9.0",
+    "better-sqlite3": "^12.10.0",
     "express": "^5.0.1",
     "express-rate-limit": "^8.5.2",
     "react": "^19.1.0",
