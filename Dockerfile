@@ -1,5 +1,5 @@
 # Stage 1: Build the React frontend
-FROM node:25-bookworm-slim AS frontend-build
+FROM node:26-bookworm-slim AS frontend-build
 RUN apt-get update && apt-get upgrade -y --no-install-recommends && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY package.json ./
@@ -9,7 +9,7 @@ WORKDIR /app/frontend
 RUN npm run build
 
 # Stage 2: Build the Node/Express backend
-FROM node:25-bookworm-slim AS backend-build
+FROM node:26-bookworm-slim AS backend-build
 WORKDIR /app
 COPY package.json ./
 RUN npm install
@@ -17,7 +17,7 @@ COPY backend/src ./src
 COPY --from=frontend-build /app/frontend/dist ./public
 
 # Stage 3: Final combined image
-FROM node:25-bookworm-slim
+FROM node:26-bookworm-slim
 ENV PYTHONUNBUFFERED=1
 
 RUN apt-get update && apt-get upgrade -y --no-install-recommends \
