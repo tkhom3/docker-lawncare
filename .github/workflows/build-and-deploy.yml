@@ -21,5 +21,5 @@ permissions:
 jobs:
   build-and-release-image:
     if: github.actor == 'dependabot[bot]' || github.event_name == 'push'
-    uses: tkhom3/gha-workflows/.github/workflows/build-and-push-image.yml@64fcfa07e0917b1cc082567e6096ce3eccd2db47 # v1.0.9
+    uses: tkhom3/gha-workflows/.github/workflows/build-and-push-image.yml@aa66c6cf2188919b4e79194010e779c6c6833b27 # v1.0.13
     secrets: inherit
