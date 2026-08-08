@@ -9,6 +9,6 @@ permissions:
 
 jobs:
   build-image:
-    uses: tkhom3/gha-workflows/.github/workflows/automerge-prs.yml@edbfb65bf4718daa5e02dc5bcc40b0fdf8018143 # v1.0.22
+    uses: tkhom3/gha-workflows/.github/workflows/automerge-prs.yml@7c35941896dc5aa1a495746e7a3c2ed1068bebc8 # v1.0.24
     secrets:
       token: ${{ secrets.GHA_PAT }}
