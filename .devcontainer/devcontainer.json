@@ -2,13 +2,13 @@
   "name": "Lawncare Dashboard",
   "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
   "features": {
-    "ghcr.io/devcontainers/features/node:": { "version": "22" },
+    "ghcr.io/devcontainers/features/node:2": { "version": "22" },
     "ghcr.io/devcontainers/features/python:1": { "version": "3.14" },
     "ghcr.io/devcontainers/features/docker-in-docker:4.1.3": {},
     "ghcr.io/devcontainers-extra/features/uv:1": {},
     "ghcr.io/devcontainers/features/github-cli:1": {}
   },
-  "postCreateCommand": "npm install -g npm@latest && npm install --prefix backend && npm install --prefix frontend && cd collector && uv sync",
+  "postCreateCommand": "npm ci && cd collector && uv sync --frozen",
   "forwardPorts": [3000, 5173],
   "portsAttributes": {
     "3000": { "label": "Backend / Production" },
